@@ -43,6 +43,9 @@ ice.point_negation.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p
 #==============================================================================
 ice.point_doubling.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p]  # x,y,ret
 #==============================================================================
+ice.privatekey_to_coinaddress.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_bool, ctypes.c_char_p]  # intcoin,012,comp,pvk
+ice.privatekey_to_coinaddress.restype = ctypes.c_void_p
+#==============================================================================
 ice.privatekey_to_address.argtypes = [ctypes.c_int, ctypes.c_bool, ctypes.c_char_p]  # 012,comp,pvk
 ice.privatekey_to_address.restype = ctypes.c_void_p
 #==============================================================================
@@ -53,6 +56,8 @@ ice.pubkey_to_address.argtypes = [ctypes.c_int, ctypes.c_bool, ctypes.c_char_p] 
 ice.pubkey_to_address.restype = ctypes.c_void_p
 #==============================================================================
 ice.privatekey_to_h160.argtypes = [ctypes.c_int, ctypes.c_bool, ctypes.c_char_p, ctypes.c_char_p]  # 012,comp,pvk,ret
+#==============================================================================
+ice.privatekey_loop_h160.argtypes = [ctypes.c_ulonglong, ctypes.c_int, ctypes.c_bool, ctypes.c_char_p, ctypes.c_char_p]  # num,012,comp,pvk,ret
 #==============================================================================
 ice.pubkey_to_h160.argtypes = [ctypes.c_int, ctypes.c_bool, ctypes.c_char_p, ctypes.c_char_p]  # 012,comp,upub,ret
 #==============================================================================
@@ -65,6 +70,12 @@ ice.point_addition.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p
 ice.point_subtraction.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p] # x1,y1,x2,y2,ret
 #==============================================================================
 ice.point_loop_subtraction.argtypes = [ctypes.c_ulonglong, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p] # k,x1,y1,x2,y2,ret
+#==============================================================================
+ice.point_loop_addition.argtypes = [ctypes.c_ulonglong, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p] # k,upub1,upub2,ret
+#==============================================================================
+ice.point_vector_addition.argtypes = [ctypes.c_ulonglong, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p] # num,upubs1,upubs2,ret
+#==============================================================================
+ice.point_sequential_increment.argtypes = [ctypes.c_ulonglong, ctypes.c_char_p, ctypes.c_char_p] # num,upub1,ret
 #==============================================================================
 ice.pubkeyxy_to_ETH_address.argtypes = [ctypes.c_char_p] # upub_xy
 ice.pubkeyxy_to_ETH_address.restype = ctypes.c_void_p
@@ -123,6 +134,14 @@ def point_doubling(pubkey_bytes):
     res = _point_doubling(pubkey_bytes)
     return bytes(bytearray(res))
 #==============================================================================
+def privatekey_to_coinaddress(coin_type, addr_type, iscompressed, pvk_int):
+    # type = 0 [p2pkh],  1 [p2sh],  2 [bech32]
+    pass_int_value = hex(pvk_int)[2:].encode('utf8')
+    res = ice.privatekey_to_coinaddress(coin_type, addr_type, iscompressed, pass_int_value)
+    addr = (ctypes.cast(res, ctypes.c_char_p).value).decode('utf8')
+    ice.free_memory(res)
+    return addr
+#==============================================================================
 def privatekey_to_address(addr_type, iscompressed, pvk_int):
     # type = 0 [p2pkh],  1 [p2sh],  2 [bech32]
     pass_int_value = hex(pvk_int)[2:].encode('utf8')
@@ -153,6 +172,16 @@ def _privatekey_to_h160(addr_type, iscompressed, pvk_int):
     return res
 def privatekey_to_h160(addr_type, iscompressed, pvk_int):
     res = _privatekey_to_h160(addr_type, iscompressed, pvk_int)
+    return bytes(bytearray(res))
+#==============================================================================
+def _privatekey_loop_h160(num, addr_type, iscompressed, pvk_int):
+    # type = 0 [p2pkh],  1 [p2sh],  2 [bech32]
+    pass_int_value = hex(pvk_int)[2:].encode('utf8')
+    res = (b'\x00') * (20 * num)
+    ice.privatekey_loop_h160(num, addr_type, iscompressed, pass_int_value, res)
+    return res
+def privatekey_loop_h160(num, addr_type, iscompressed, pvk_int):
+    res = _privatekey_loop_h160(num, addr_type, iscompressed, pvk_int)
     return bytes(bytearray(res))
 #==============================================================================
 def _pubkey_to_h160(addr_type, iscompressed, pubkey_bytes):
@@ -200,15 +229,39 @@ def point_subtraction(pubkey1_bytes, pubkey2_bytes):
     return bytes(bytearray(res))
 #==============================================================================
 def _point_loop_subtraction(num, pubkey1_bytes, pubkey2_bytes):
-    x1 = pubkey1_bytes[1:33]
-    y1 = pubkey1_bytes[33:]
-    x2 = pubkey2_bytes[1:33]
-    y2 = pubkey2_bytes[33:]
     res = (b'\x00') * (65 * num)
-    ice.point_loop_subtraction(num, x1, y1, x2, y2, res)
+    ice.point_loop_subtraction(num, pubkey1_bytes, pubkey2_bytes, res)
     return res
 def point_loop_subtraction(num, pubkey1_bytes, pubkey2_bytes):
     res = _point_loop_subtraction(num, pubkey1_bytes, pubkey2_bytes)
+    return bytes(bytearray(res))
+#==============================================================================
+def _point_loop_addition(num, pubkey1_bytes, pubkey2_bytes):
+    res = (b'\x00') * (65 * num)
+    ice.point_loop_addition(num, pubkey1_bytes, pubkey2_bytes, res)
+    return res
+def point_loop_addition(num, pubkey1_bytes, pubkey2_bytes):
+    res = _point_loop_addition(num, pubkey1_bytes, pubkey2_bytes)
+    return bytes(bytearray(res))
+#==============================================================================
+def _point_vector_addition(num, pubkeys1_bytes, pubkeys2_bytes):
+    res = (b'\x00') * (65 * num)
+    ice.point_vector_addition(num, pubkeys1_bytes, pubkeys2_bytes, res)
+    return res
+def point_vector_addition(num, pubkeys1_bytes, pubkeys2_bytes):
+    res = _point_vector_addition(num, pubkeys1_bytes, pubkeys2_bytes)
+    return bytes(bytearray(res))
+#==============================================================================
+def _point_sequential_increment(num, pubkey1_bytes):
+    res = (b'\x00') * (65 * num)
+    ice.point_sequential_increment(num, pubkey1_bytes, res)
+    return res
+def point_sequential_increment(num, pubkey1_bytes):
+    ''' This is the fastest implementation.
+    Remember, DONT use it to increment from very initial values of pubkey1 example 1 to 500.
+    The results are valid if the pubkey1_bytes are corresponding to the pvk > num.
+    For those inital values a slighly slower, point_loop_addition can be used.'''
+    res = _point_sequential_increment(num, pubkey1_bytes)
     return bytes(bytearray(res))
 #==============================================================================
 def pubkey_to_ETH_address(pubkey_bytes):
