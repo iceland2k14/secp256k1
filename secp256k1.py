@@ -69,7 +69,7 @@ ice.point_addition.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p
 #==============================================================================
 ice.point_subtraction.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p] # x1,y1,x2,y2,ret
 #==============================================================================
-ice.point_loop_subtraction.argtypes = [ctypes.c_ulonglong, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p] # k,x1,y1,x2,y2,ret
+ice.point_loop_subtraction.argtypes = [ctypes.c_ulonglong, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p] # k,upub1,upub2,ret
 #==============================================================================
 ice.point_loop_addition.argtypes = [ctypes.c_ulonglong, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p] # k,upub1,upub2,ret
 #==============================================================================
@@ -152,7 +152,7 @@ def privatekey_to_address(addr_type, iscompressed, pvk_int):
 #==============================================================================
 def hash_to_address(addr_type, iscompressed, hash160_bytes):
     # type = 0 [p2pkh],  1 [p2sh],  2 [bech32]
-    res = ice.pubkey_to_address(addr_type, iscompressed, hash160_bytes)
+    res = ice.hash_to_address(addr_type, iscompressed, hash160_bytes)
     addr = (ctypes.cast(res, ctypes.c_char_p).value).decode('utf8')
     ice.free_memory(res)
     return addr
