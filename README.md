@@ -70,6 +70,33 @@ ice.privatekey_to_ETH_address(43789543)
 
 ice.privatekey_group_to_ETH_address(43232, 4)
 : 'a760b12246759d603cca3686b95b1309772e9c30481fe3d921db92f0a0ad0012a852f0eaf05784feec0c24da5eeed9e7a6eb4477ee030289bf68311863b57e0e653620747c2339f48ba8cd60ea33ea88'
+
+ice.pub_endo1(P).hex()
+: '0441d68a94e621d33139103b6e4b9d8ac94103ba746952e4b322b7e7ba8c1d75d18adf94f4e2a50b05fe35aee42c146f6415e5cf524b6b1b5a8d17de8b741a5a21'
+
+ice.pub_endo2(P).hex()
+: '04354b14ad8dc5bc5ccaa75b17c1990bca88f980289af2b22a440821de88fa6b0f8adf94f4e2a50b05fe35aee42c146f6415e5cf524b6b1b5a8d17de8b741a5a21'
+
+ice.get_sha256('S6c56bnXQiBjk9mqSYE7ykVQ7NzrRy').hex()
+: '4c7a9640c72dc2099f23715d0c8a0d8a35f8906e3cab61dd3f78b67bf887c9ab'
+
+ice.get_sha256(P).hex()
+: '739c4ba018e1877d5c82fa60b7e2304776e7bf39af5dc9b4c05152ea78b822f9'
+
+ice.privatekey_to_coinaddress(ice.COIN_LTC, 0, True, 0x1b1f)
+: 'LPb9na7qWdM7iHwKiiQmkQrhBtr11n8ywb'
+
+ice.privatekey_to_coinaddress(ice.COIN_DOGE, 0, True, 0x1b1f)
+: 'D9WJ4ckejP1LzVRmHAR329xXrpD2HhkX4Q'
+
+ice.privatekey_to_coinaddress(ice.COIN_DOGE, 0, False, 0x1b1f)
+: 'D7Q1YeimeNmgmn4HnRGJnFrpMkQWJK3bHn'
+
+ice.privatekey_to_coinaddress(ice.COIN_DASH, 0, True, 0x1b1f)
+: 'Xf43McTuPgKecRqkQTjhKvUip24Qza1qRF'
+
+ice.privatekey_to_coinaddress(ice.COIN_RVN, 0, True, 0x1b1f)
+: 'RDePbshJ2nudXVcN1kQbZv88jwwKWs42X6'
 ```
 # Speed
 On my old Laptop with i7 4810 MQ CPU
