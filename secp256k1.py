@@ -12,6 +12,7 @@ import ctypes
 
 ###############################################################################
 N = 0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141
+Zero=b'\x04\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
 #==============================================================================
 if platform.system().lower().startswith('win'):
     dllfile = 'ice_secp256k1.dll'
@@ -93,11 +94,11 @@ ice.scalar_multiplication.argtypes = [ctypes.c_char_p, ctypes.c_char_p]         
 #==============================================================================
 ice.get_x_to_y.argtypes = [ctypes.c_char_p, ctypes.c_bool, ctypes.c_char_p]   # x,even,ret
 #==============================================================================
-ice.point_increment.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p] # x,y,ret
+ice.point_increment.argtypes = [ctypes.c_char_p, ctypes.c_char_p] # upub,ret
 #==============================================================================
-ice.point_negation.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p]  # x,y,ret
+ice.point_negation.argtypes = [ctypes.c_char_p, ctypes.c_char_p]  # upub,ret
 #==============================================================================
-ice.point_doubling.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p]  # x,y,ret
+ice.point_doubling.argtypes = [ctypes.c_char_p, ctypes.c_char_p]  # upub,ret
 #==============================================================================
 ice.privatekey_to_coinaddress.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_bool, ctypes.c_char_p]  # intcoin,012,comp,pvk
 ice.privatekey_to_coinaddress.restype = ctypes.c_void_p
@@ -130,9 +131,9 @@ ice.get_sha256.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_void_p] # inp
 #==============================================================================
 ice.create_baby_table.argtypes = [ctypes.c_ulonglong, ctypes.c_ulonglong, ctypes.c_char_p] # start,end,ret
 #==============================================================================
-ice.point_addition.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p] # x1,y1,x2,y2,ret
+ice.point_addition.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p] # upub1,upub2,ret
 #==============================================================================
-ice.point_subtraction.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p] # x1,y1,x2,y2,ret
+ice.point_subtraction.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p] # upub1,upub2,ret
 #==============================================================================
 ice.point_loop_subtraction.argtypes = [ctypes.c_ulonglong, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p] # k,upub1,upub2,ret
 #==============================================================================
@@ -159,17 +160,28 @@ ice.init_secp256_lib()
 ###############################################################################
 
 
-def _scalar_multiplication(kk):
+def _scalar_multiplication(pvk_int):
     ''' Integer value passed to function. 65 bytes uncompressed pubkey output '''
     res = (b'\x00') * 65
-    pass_int_value = hex(kk)[2:].encode('utf8')
+    pass_int_value = hex(pvk_int)[2:].encode('utf8')
     ice.scalar_multiplication(pass_int_value, res)
     return res
-def scalar_multiplication(kk):
-    if kk < 0: kk = N-kk
-    res = _scalar_multiplication(kk)
+def scalar_multiplication(pvk_int):
+    if pvk_int < 0: pvk_int = N+pvk_int
+    res = _scalar_multiplication(pvk_int)
     return bytes(bytearray(res))
 #==============================================================================
+def point_multiplication(k, P):
+    def bits(k):
+        while k:
+            yield k & 1
+            k >>= 1
+    result = Zero
+    addend = P
+    for bit in bits(k):
+        if bit == 1: result=point_addition(result,addend)
+        addend=point_doubling(addend)
+    return result
 # =============================================================================
 # def _point_multiplication(pubkey_bytes, kk):
 #     ''' Input Point and Integer value passed to function. 65 bytes uncompressed pubkey output '''
@@ -192,30 +204,24 @@ def get_x_to_y(x_hex, is_even):
     return bytes(bytearray(res))
 #==============================================================================
 def _point_increment(pubkey_bytes):
-    x1 = pubkey_bytes[1:33]
-    y1 = pubkey_bytes[33:]
     res = (b'\x00') * 65
-    ice.point_increment(x1, y1, res)
+    ice.point_increment(pubkey_bytes, res)
     return res
 def point_increment(pubkey_bytes):
     res = _point_increment(pubkey_bytes)
     return bytes(bytearray(res))
 #==============================================================================
 def _point_negation(pubkey_bytes):
-    x1 = pubkey_bytes[1:33]
-    y1 = pubkey_bytes[33:]
     res = (b'\x00') * 65
-    ice.point_negation(x1, y1, res)
+    ice.point_negation(pubkey_bytes, res)
     return res
 def point_negation(pubkey_bytes):
     res = _point_negation(pubkey_bytes)
     return bytes(bytearray(res))
 #==============================================================================
 def _point_doubling(pubkey_bytes):
-    x1 = pubkey_bytes[1:33]
-    y1 = pubkey_bytes[33:]
     res = (b'\x00') * 65
-    ice.point_doubling(x1, y1, res)
+    ice.point_doubling(pubkey_bytes, res)
     return res
 def point_doubling(pubkey_bytes):
     res = _point_doubling(pubkey_bytes)
@@ -223,7 +229,7 @@ def point_doubling(pubkey_bytes):
 #==============================================================================
 def privatekey_to_coinaddress(coin_type, addr_type, iscompressed, pvk_int):
     # type = 0 [p2pkh],  1 [p2sh],  2 [bech32]
-    if pvk_int < 0: pvk_int = N-pvk_int
+    if pvk_int < 0: pvk_int = N+pvk_int
     pass_int_value = hex(pvk_int)[2:].encode('utf8')
     res = ice.privatekey_to_coinaddress(coin_type, addr_type, iscompressed, pass_int_value)
     addr = (ctypes.cast(res, ctypes.c_char_p).value).decode('utf8')
@@ -232,7 +238,7 @@ def privatekey_to_coinaddress(coin_type, addr_type, iscompressed, pvk_int):
 #==============================================================================
 def privatekey_to_address(addr_type, iscompressed, pvk_int):
     # type = 0 [p2pkh],  1 [p2sh],  2 [bech32]
-    if pvk_int < 0: pvk_int = N-pvk_int
+    if pvk_int < 0: pvk_int = N+pvk_int
     pass_int_value = hex(pvk_int)[2:].encode('utf8')
     res = ice.privatekey_to_address(addr_type, iscompressed, pass_int_value)
     addr = (ctypes.cast(res, ctypes.c_char_p).value).decode('utf8')
@@ -255,7 +261,7 @@ def pubkey_to_address(addr_type, iscompressed, pubkey_bytes):
 #==============================================================================
 def _privatekey_to_h160(addr_type, iscompressed, pvk_int):
     # type = 0 [p2pkh],  1 [p2sh],  2 [bech32]
-    if pvk_int < 0: pvk_int = N-pvk_int
+    if pvk_int < 0: pvk_int = N+pvk_int
     pass_int_value = hex(pvk_int)[2:].encode('utf8')
     res = (b'\x00') * 20
     ice.privatekey_to_h160(addr_type, iscompressed, pass_int_value, res)
@@ -266,12 +272,13 @@ def privatekey_to_h160(addr_type, iscompressed, pvk_int):
 #==============================================================================
 def _privatekey_loop_h160(num, addr_type, iscompressed, pvk_int):
     # type = 0 [p2pkh],  1 [p2sh],  2 [bech32]
-    if pvk_int < 0: pvk_int = N-pvk_int
+    if pvk_int < 0: pvk_int = N+pvk_int
     pass_int_value = hex(pvk_int)[2:].encode('utf8')
     res = (b'\x00') * (20 * num)
     ice.privatekey_loop_h160(num, addr_type, iscompressed, pass_int_value, res)
     return res
 def privatekey_loop_h160(num, addr_type, iscompressed, pvk_int):
+    if num <= 0: num = 1
     res = _privatekey_loop_h160(num, addr_type, iscompressed, pvk_int)
     return bytes(bytearray(res))
 #==============================================================================
@@ -327,24 +334,16 @@ def create_baby_table(start_value, end_value):
     return bytes(bytearray(res))
 #==============================================================================
 def _point_addition(pubkey1_bytes, pubkey2_bytes):
-    x1 = pubkey1_bytes[1:33]
-    y1 = pubkey1_bytes[33:]
-    x2 = pubkey2_bytes[1:33]
-    y2 = pubkey2_bytes[33:]
     res = (b'\x00') * 65
-    ice.point_addition(x1, y1, x2, y2, res)
+    ice.point_addition(pubkey1_bytes, pubkey2_bytes, res)
     return res
 def point_addition(pubkey1_bytes, pubkey2_bytes):
     res = _point_addition(pubkey1_bytes, pubkey2_bytes)
     return bytes(bytearray(res))
 #==============================================================================
 def _point_subtraction(pubkey1_bytes, pubkey2_bytes):
-    x1 = pubkey1_bytes[1:33]
-    y1 = pubkey1_bytes[33:]
-    x2 = pubkey2_bytes[1:33]
-    y2 = pubkey2_bytes[33:]
     res = (b'\x00') * 65
-    ice.point_subtraction(x1, y1, x2, y2, res)
+    ice.point_subtraction(pubkey1_bytes, pubkey2_bytes, res)
     return res
 def point_subtraction(pubkey1_bytes, pubkey2_bytes):
     res = _point_subtraction(pubkey1_bytes, pubkey2_bytes)
@@ -355,6 +354,7 @@ def _point_loop_subtraction(num, pubkey1_bytes, pubkey2_bytes):
     ice.point_loop_subtraction(num, pubkey1_bytes, pubkey2_bytes, res)
     return res
 def point_loop_subtraction(num, pubkey1_bytes, pubkey2_bytes):
+    if num <= 0: num = 1
     res = _point_loop_subtraction(num, pubkey1_bytes, pubkey2_bytes)
     return bytes(bytearray(res))
 #==============================================================================
@@ -363,6 +363,7 @@ def _point_loop_addition(num, pubkey1_bytes, pubkey2_bytes):
     ice.point_loop_addition(num, pubkey1_bytes, pubkey2_bytes, res)
     return res
 def point_loop_addition(num, pubkey1_bytes, pubkey2_bytes):
+    if num <= 0: num = 1
     res = _point_loop_addition(num, pubkey1_bytes, pubkey2_bytes)
     return bytes(bytearray(res))
 #==============================================================================
@@ -371,6 +372,7 @@ def _point_vector_addition(num, pubkeys1_bytes, pubkeys2_bytes):
     ice.point_vector_addition(num, pubkeys1_bytes, pubkeys2_bytes, res)
     return res
 def point_vector_addition(num, pubkeys1_bytes, pubkeys2_bytes):
+    if num <= 0: num = 1
     res = _point_vector_addition(num, pubkeys1_bytes, pubkeys2_bytes)
     return bytes(bytearray(res))
 #==============================================================================
@@ -383,6 +385,7 @@ def point_sequential_increment(num, pubkey1_bytes):
     Remember, DONT use it to increment from very initial values of pubkey1 example 1 to 500.
     The results are valid if the pubkey1_bytes are corresponding to the pvk > num.
     For those inital values a slighly slower, point_loop_addition can be used.'''
+    if num <= 0: num = 1
     res = _point_sequential_increment(num, pubkey1_bytes)
     return bytes(bytearray(res))
 #==============================================================================
@@ -396,7 +399,7 @@ def pubkey_to_ETH_address(pubkey_bytes):
 #==============================================================================
 def privatekey_to_ETH_address(pvk_int):
     ''' Privatekey Integer value passed to function. Output is 20 bytes ETH address lowercase with 0x'''
-    if pvk_int < 0: pvk_int = N-pvk_int
+    if pvk_int < 0: pvk_int = N+pvk_int
     pass_int_value = hex(pvk_int)[2:].encode('utf8')
     res = ice.privatekey_to_ETH_address(pass_int_value)
     addr = (ctypes.cast(res, ctypes.c_char_p).value).decode('utf8')
@@ -408,7 +411,7 @@ def privatekey_group_to_ETH_address(pvk_int, m):
     Integer m is, how many times sequential increment is done from the starting key.
     Output is bytes 20*m of ETH address lowercase without 0x'''
     if m<=0: m = 1
-    if pvk_int < 0: pvk_int = N-pvk_int
+    if pvk_int < 0: pvk_int = N+pvk_int
     start_pvk = hex(pvk_int)[2:].encode('utf8')
     res = ice.privatekey_group_to_ETH_address(start_pvk, m)
     addrlist = (ctypes.cast(res, ctypes.c_char_p).value).decode('utf8')

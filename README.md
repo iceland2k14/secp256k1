@@ -1,6 +1,18 @@
 # secp256k1
 Python Library for Secp256k1 Bitcoin curve to do fast ECC calculation (3.49 Million/s per cpu)
 
+# Info
+```
+Some functions have been added for easier and quicker use in a script.
+A Point is just a bytes form of correct length Full Pubkey. So 65 bytes exactly.
+
+point_loop_addition is just like starting from a point P and incrementing +G continuously m times. So we get P+G, P+2G, P+3G...... All these are returned concatenated in 65bytes*m.
+Same is the case with point_vector_addition but here two Point vectors are added together. Lets say 10points of 650bytes added with 10points of 650bytes to get added 650bytes.
+point_sequential_increment is similar to loop_increment except some vector trick is used to make it faster. (Note: It is not yet working in very low range Privatekey Points).
+
+Many Altcoin Address support has been added. Although not checked all of them. 
+```
+
 # Example Usage
 ```
 import secp256k1 as ice
