@@ -152,6 +152,8 @@ ice.point_vector_addition.argtypes = [ctypes.c_ulonglong, ctypes.c_char_p, ctype
 #==============================================================================
 ice.point_sequential_increment.argtypes = [ctypes.c_ulonglong, ctypes.c_char_p, ctypes.c_char_p] # num,upub1,ret
 #==============================================================================
+ice.point_sequential_decrement.argtypes = [ctypes.c_ulonglong, ctypes.c_char_p, ctypes.c_char_p] # num,upub1,ret
+#==============================================================================
 ice.pubkeyxy_to_ETH_address.argtypes = [ctypes.c_char_p] # upub_xy
 ice.pubkeyxy_to_ETH_address.restype = ctypes.c_void_p
 #==============================================================================
@@ -205,10 +207,7 @@ def scalar_multiplication(pvk_int):
 #==============================================================================
 def point_multiplication(k, P):
     ''' k=scalar. P = Input Point. Output is 65 bytes uncompressed pubkey '''
-    if type(P) == int:
-        tmp = k
-        k = P
-        P = tmp
+    if type(P) == int: k,P = P,k
     def bits(k):
         while k:
             yield k & 1

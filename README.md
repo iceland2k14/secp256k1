@@ -9,6 +9,7 @@ A Point is just a bytes form of correct length Full Pubkey. So 65 bytes exactly.
 point_loop_addition is just like starting from a point P and incrementing +G continuously m times. So we get P+G, P+2G, P+3G...... All these are returned concatenated in 65bytes*m.
 Same is the case with point_vector_addition but here two Point vectors are added together. Lets say 10points of 650bytes added with 10points of 650bytes to get added 650bytes.
 point_sequential_increment is similar to loop_increment except some vector trick is used to make it faster. (Note: It is not yet working in very low range Privatekey Points).
+Currently No Zero Point handling in vector addition and sequential increment and decrement.
 
 Many Altcoin Address support has been added. Although not checked all of them. 
 ```
@@ -74,11 +75,37 @@ P4 = ice.point_sequential_increment(500000, P)
 P4[:65].hex()
 : '046ebfe8cd423c6c16fa29ce8aae12fa15b4ab78314773aa6453aa98b2bdcc10f66a43166c2f45267331dcf4a113aa584cd040fb0f8fe07326c28a8cb6b0f84149'
 
+ice.btc_pvk_to_wif(0x4732861b1f)
+: 'KwDiBf89QgGbjEhKnhXJuH7LrciVrZi3qYjgd9R7rErzLE79yTdy'
+ice.btc_pvk_to_wif(305790327583)
+: 'KwDiBf89QgGbjEhKnhXJuH7LrciVrZi3qYjgd9R7rErzLE79yTdy'
+ice.btc_pvk_to_wif('4732861b1f')
+: 'KwDiBf89QgGbjEhKnhXJuH7LrciVrZi3qYjgd9R7rErzLE79yTdy'
+ice.btc_pvk_to_wif(b'G2\x86\x1b\x1f')
+: 'KwDiBf89QgGbjEhKnhXJuH7LrciVrZi3qYjgd9R7rErzLE79yTdy'
+
+ice.btc_pvk_to_wif(0x4732861b1f, False)
+: '5HpHagT65TZzG1PH3CSu63k8DbpvD8s5ip4nEB4eoVyBj2oWsCR'
+
+ice.btc_wif_to_pvk_hex('KwDiBf89QgGbjEhKnhXJuH7LrciVrZi3qYjgd9R7rErzLE79yTdy')
+: '0000000000000000000000000000000000000000000000000000004732861b1f'
+
+ice.address_to_h160('151F838jqc92vshQNBXXf95hSW5hHbXHDq')
+: '2bec4a80756fae715eec388727dacbca9ec34b54'
+
+ice.bech32_address_decode('bc1q90ky4qr4d7h8zhhv8zrj0kkte20vxj65uft745')
+: '2bec4a80756fae715eec388727dacbca9ec34b54'
+ice.bech32_address_decode('ltc1q90ky4qr4d7h8zhhv8zrj0kkte20vxj65c436dy', ice.COIN_LTC)
+: '2bec4a80756fae715eec388727dacbca9ec34b54'
+
 ice.pubkey_to_ETH_address(P)
 : '0xfa7e4d39a1fde2d03d01e298c31ee602bcdf4c85'
 
 ice.privatekey_to_ETH_address(43789543)
 : '0xf91262290187f5547839ae0c84b55892f39c5a9b'
+
+ice.privatekey_to_ETH_address_bytes(43789543).hex()
+: 'f91262290187f5547839ae0c84b55892f39c5a9b'
 
 ice.privatekey_group_to_ETH_address(43232, 4)
 : 'a760b12246759d603cca3686b95b1309772e9c30481fe3d921db92f0a0ad0012a852f0eaf05784feec0c24da5eeed9e7a6eb4477ee030289bf68311863b57e0e653620747c2339f48ba8cd60ea33ea88'
