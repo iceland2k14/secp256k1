@@ -150,6 +150,10 @@ ice.point_loop_addition.argtypes = [ctypes.c_ulonglong, ctypes.c_char_p, ctypes.
 #==============================================================================
 ice.point_vector_addition.argtypes = [ctypes.c_ulonglong, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p] # num,upubs1,upubs2,ret
 #==============================================================================
+ice.point_sequential_increment_P2.argtypes = [ctypes.c_ulonglong, ctypes.c_char_p, ctypes.c_char_p] # num,upub1,ret
+#==============================================================================
+ice.point_sequential_increment_P2_mcpu.argtypes = [ctypes.c_ulonglong, ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p] # num,upub1,mcpu,ret
+#==============================================================================
 ice.point_sequential_increment.argtypes = [ctypes.c_ulonglong, ctypes.c_char_p, ctypes.c_char_p] # num,upub1,ret
 #==============================================================================
 ice.point_sequential_decrement.argtypes = [ctypes.c_ulonglong, ctypes.c_char_p, ctypes.c_char_p] # num,upub1,ret
@@ -169,8 +173,16 @@ ice.privatekey_group_to_ETH_address.restype = ctypes.c_void_p
 #==============================================================================
 ice.privatekey_group_to_ETH_address_bytes.argtypes = [ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p] # pvk,m,ret
 #==============================================================================
+ice.init_P2_Group.argtypes = [ctypes.c_char_p] # upub
+#==============================================================================
 ice.free_memory.argtypes = [ctypes.c_void_p] # pointer
 #==============================================================================
+ice.bloom_check_add.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_ulonglong, ctypes.c_ubyte, ctypes.c_char_p] #buff, len, 0_1, _bits, _hashes, _bf
+ice.bloom_check_add.restype = ctypes.c_int
+#==============================================================================
+ice.bloom_batch_add.argtypes = [ctypes.c_int, ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_ulonglong, ctypes.c_ubyte, ctypes.c_char_p] #chunk, buff, len, 0_1, _bits, _hashes, _bf
+#==============================================================================
+ice.test_bit_set_bit.argtypes = [ctypes.c_char_p, ctypes.c_ulonglong, ctypes.c_int] #_bf, _bits, 0_1
 
 ice.init_secp256_lib()
 #==============================================================================
@@ -178,7 +190,7 @@ ice.init_secp256_lib()
 
 
 def version():
-    ice.version()
+    ice.version()   
 #==============================================================================
 def _scalar_multiplication(pvk_int):
     ''' Integer value passed to function. 65 bytes uncompressed pubkey output '''
@@ -251,6 +263,9 @@ def _point_doubling(pubkey_bytes):
 def point_doubling(pubkey_bytes):
     res = _point_doubling(pubkey_bytes)
     return bytes(bytearray(res))
+#==============================================================================
+def init_P2_Group(pubkey_bytes):
+    ice.init_P2_Group(pubkey_bytes)
 #==============================================================================
 def privatekey_to_coinaddress(coin_type, addr_type, iscompressed, pvk_int):
     # type = 0 [p2pkh],  1 [p2sh],  2 [bech32]
@@ -490,9 +505,29 @@ def _point_vector_addition(num, pubkeys1_bytes, pubkeys2_bytes):
     ice.point_vector_addition(num, pubkeys1_bytes, pubkeys2_bytes, res)
     return res
 def point_vector_addition(num, pubkeys1_bytes, pubkeys2_bytes):
-    ''' Adding two array of points of equal length. No Zero Point handling '''
+    ''' Adding two array of points of equal length. '''
     if num <= 0: num = 1
     res = _point_vector_addition(num, pubkeys1_bytes, pubkeys2_bytes)
+    return bytes(bytearray(res))
+#==============================================================================
+def _point_sequential_increment_P2(num, pubkey1_bytes):
+    res = (b'\x00') * (65 * num)
+    ice.point_sequential_increment_P2(num, pubkey1_bytes, res)
+    return res
+def point_sequential_increment_P2(num, pubkey1_bytes):
+    ''' This is the fastest implementation to add point P2 in the given Point sequentially.'''
+    if num <= 0: num = 1
+    res = _point_sequential_increment_P2(num, pubkey1_bytes)
+    return bytes(bytearray(res))
+#==============================================================================
+def _point_sequential_increment_P2_mcpu(num, pubkey1_bytes, mcpu):
+    res = (b'\x00') * (65 * num)
+    ice.point_sequential_increment_P2_mcpu(num, pubkey1_bytes, mcpu, res)
+    return res
+def point_sequential_increment_P2_mcpu(num, pubkey1_bytes, mcpu=os.cpu_count()):
+    ''' This is the fastest multi CPU implementation to add point P2 in the given Point sequentially. Threads are Not optimised yet'''
+    if num <= 0: num = 1
+    res = _point_sequential_increment_P2_mcpu(num, pubkey1_bytes, mcpu)
     return bytes(bytearray(res))
 #==============================================================================
 def _point_sequential_increment(num, pubkey1_bytes):
@@ -500,11 +535,7 @@ def _point_sequential_increment(num, pubkey1_bytes):
     ice.point_sequential_increment(num, pubkey1_bytes, res)
     return res
 def point_sequential_increment(num, pubkey1_bytes):
-    ''' This is the fastest implementation.
-    Remember, DONT use it to increment from very initial values of pubkey1 example 1 to 500.
-    The results are valid if the pubkey1_bytes are corresponding to the pvk > num.
-    For those inital values a slighly slower, point_loop_addition can be used.
-    No Zero Point handling'''
+    ''' This is the fastest implementation using G'''
     if num <= 0: num = 1
     res = _point_sequential_increment(num, pubkey1_bytes)
     return bytes(bytearray(res))
@@ -514,11 +545,7 @@ def _point_sequential_decrement(num, pubkey1_bytes):
     ice.point_sequential_decrement(num, pubkey1_bytes, res)
     return res
 def point_sequential_decrement(num, pubkey1_bytes):
-    ''' This is the fastest implementation.
-    Remember, DONT use it to increment from very initial values of pubkey1 example 1 to 500.
-    The results are valid if the pubkey1_bytes are corresponding to the pvk > num.
-    For those inital values a slighly slower, point_loop_subtraction can be used.
-    No Zero Point handling'''
+    ''' This is the fastest implementation using -G.'''
     if num <= 0: num = 1
     res = _point_sequential_decrement(num, pubkey1_bytes)
     return bytes(bytearray(res))
