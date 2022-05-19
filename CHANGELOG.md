@@ -1,3 +1,15 @@
+## Version: 0.1.18052022
+- Added checksum for sha256
+- Unsupported type ERROR in fl now print detected Type
+- Pubkey conversion functions added pub2upub, to_cpub, point_to_cpub
+- function bloom_check_add_mcpu added for later use
+- bloom_para, Fill_in_bloom, check_in_bloom helpful wrappers for bloom creation and test
+- prepare_bin_file, prepare_bin_file_work ideally to be used with rmd or eth to create .bin file
+- Once created the bloom can be saved and reloaded by dump_bloom_file, read_bloom_file
+- Option from .bin sorted file __20 byte each item__ to directly load into RAM using Load_data_to_memory
+- check for existence using check_collision function alongside Load_data_to_memory
+
+
 ## Version: 0.1.29122021
 - Added version
 - privatekey_loop_h160_sse for using SSE advantage and privatekey_loop_h160 for old cpu

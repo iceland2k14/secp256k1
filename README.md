@@ -136,6 +136,35 @@ ice.privatekey_to_coinaddress(ice.COIN_DASH, 0, True, 0x1b1f)
 
 ice.privatekey_to_coinaddress(ice.COIN_RVN, 0, True, 0x1b1f)
 : 'RDePbshJ2nudXVcN1kQbZv88jwwKWs42X6'
+
+ice.checksum('What is the use of it?').hex()
+: '6bbe6051'
+
+xx = ['43253', 'hfoiefcope', 'cvt9', '4329r32hf39', '4e329jf4iehgf43']
+_bits, _hashes, _bf = ice.Fill_in_bloom(xx, 0.000001)
+print(ice.check_in_bloom('cvt9', _bits, _hashes, _bf))
+: True
+
+ice.dump_bloom_file("my_bloom_file.bin", _bits, _hashes, _bf)
+_bits, _hashes, _bf = ice.read_bloom_file("my_bloom_file.bin")
+print(ice.check_in_bloom('cvt9', _bits, _hashes, _bf))
+: True
+
+P = ice.pub2upub('02CEB6CBBCDBDF5EF7150682150F4CE2C6F4807B349827DCDBDD1F2EFA885A2630')
+print(P.hex())
+: '04ceb6cbbcdbdf5ef7150682150f4ce2c6f4807b349827dcdbdd1f2efa885a26302b195386bea3f5f002dc033b92cfc2c9e71b586302b09cfe535e1ff290b1b5ac'
+
+ice.point_to_cpub(P)
+: '02ceb6cbbcdbdf5ef7150682150f4ce2c6f4807b349827dcdbdd1f2efa885a2630'
+
+ice.to_cpub('04ceb6cbbcdbdf5ef7150682150f4ce2c6f4807b349827dcdbdd1f2efa885a26302b195386bea3f5f002dc033b92cfc2c9e71b586302b09cfe535e1ff290b1b5ac')
+: '02ceb6cbbcdbdf5ef7150682150f4ce2c6f4807b349827dcdbdd1f2efa885a2630'
+
+ice.prepare_bin_file("eth_addr_file.txt", "eth_sorted.bin", True, True)
+ice.Load_data_to_memory("eth_sorted.bin", False)
+ice.check_collision(this_key_eth_bytes)
+: True
+
 ```
 # Speed
 On my old Laptop with i7 4810 MQ CPU
