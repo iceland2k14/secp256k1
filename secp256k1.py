@@ -694,11 +694,9 @@ def prepare_bin_file_work(in_file, out_file, lower = False):
     
     with open(out_file, 'wb') as f:
         if use0x:
-            tmp_list = [line[2:] for line in inp_list]
-        else:
-            tmp_list = inp_list
-        tmp_list.sort()
-        for line in tmp_list:
+            inp_list = [line[2:] for line in inp_list]
+        inp_list.sort()
+        for line in inp_list:
             f.write(bytes.fromhex(line))
 #==============================================================================
 def prepare_bin_file(in_file, out_file, overwrite = False, lower = False):
