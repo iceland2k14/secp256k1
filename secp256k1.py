@@ -16,7 +16,8 @@ N = 0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141
 Zero=b'\x04\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
 #==============================================================================
 if platform.system().lower().startswith('win'):
-    dllfile = 'ice_secp256k1.dll'
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+    dllfile = dir_path + '/ice_secp256k1.dll'
     if os.path.isfile(dllfile) == True:
         pathdll = os.path.realpath(dllfile)
         ice = ctypes.CDLL(pathdll)
@@ -24,7 +25,8 @@ if platform.system().lower().startswith('win'):
         print('File {} not found'.format(dllfile))
     
 elif platform.system().lower().startswith('lin'):
-    dllfile = 'ice_secp256k1.so'
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+    dllfile = dir_path + '/ice_secp256k1.so'
     if os.path.isfile(dllfile) == True:
         pathdll = os.path.realpath(dllfile)
         ice = ctypes.CDLL(pathdll)
@@ -91,7 +93,7 @@ COIN_BWK  =	49
 #==============================================================================
 ice.scalar_multiplication.argtypes = [ctypes.c_char_p, ctypes.c_char_p]   # pvk,ret
 #==============================================================================
-# ice.scalar_multiplications.argtypes = [ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p]  # pvk,len,ret
+ice.scalar_multiplications.argtypes = [ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p]  # pvk,len,ret
 #==============================================================================
 ice.get_x_to_y.argtypes = [ctypes.c_char_p, ctypes.c_bool, ctypes.c_char_p]   # x,even,ret
 #==============================================================================
@@ -183,10 +185,16 @@ ice.bloom_check_add.restype = ctypes.c_int
 #==============================================================================
 ice.bloom_batch_add.argtypes = [ctypes.c_int, ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_ulonglong, ctypes.c_ubyte, ctypes.c_char_p] #chunk, buff, len, 0_1, _bits, _hashes, _bf
 #==============================================================================
-ice.bloom_check_add_mcpu.argtypes = [ctypes.c_void_p, ctypes.c_ulonglong, ctypes.c_char_p, ctypes.c_int, ctypes.c_int, ctypes.c_ulonglong, ctypes.c_ubyte, ctypes.c_char_p] #buff, num_items, found_array, len, 0_1, _bits, _hashes, _bf
+ice.bloom_check_add_mcpu.argtypes = [ctypes.c_void_p, ctypes.c_ulonglong, ctypes.c_char_p, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_ulonglong, ctypes.c_ubyte, ctypes.c_char_p] #buff, num_items, found_array, len, mcpu, 0_1, _bits, _hashes, _bf
 #==============================================================================
 ice.test_bit_set_bit.argtypes = [ctypes.c_char_p, ctypes.c_ulonglong, ctypes.c_int] #_bf, _bits, 0_1
 #==============================================================================
+ice.create_bsgs_bloom_mcpu.argtypes = [ctypes.c_int, ctypes.c_ulonglong, ctypes.c_ulonglong, ctypes.c_ubyte, ctypes.c_char_p] #mcpu, num_items, _bits, _hashes, _bf
+#==============================================================================
+ice.bsgs_2nd_check_prepare.argtypes = [ctypes.c_ulonglong] # bP_elem
+#==============================================================================
+ice.bsgs_2nd_check.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_ulonglong, ctypes.c_char_p] # upub, z1, bP_elem, ret
+ice.bsgs_2nd_check.restype = ctypes.c_bool #True or False
 #==============================================================================
 ice.Load_data_to_memory.argtypes = [ctypes.c_char_p, ctypes.c_bool] #sorted_bin_file_h160, verbose
 #==============================================================================
@@ -212,33 +220,45 @@ def scalar_multiplication(pvk_int):
     res = _scalar_multiplication(pvk_int)
     return bytes(bytearray(res))
 #==============================================================================
+def _scalar_multiplications(pvk_int_list):
+    ''' Integer list passed to function. 65*len bytes uncompressed pubkey output. No Zero Point handling '''
+    sz = len(pvk_int_list)
+    res = (b'\x00') * (65 * sz)
+    pvks = b''.join(pvk_int_list)
+    ice.scalar_multiplications(pvks, sz, res)
+    return res
+def scalar_multiplications(pvk_int_list):
+    pvk_int_list = [bytes.fromhex(fl(N+i)) if i < 0 else bytes.fromhex(fl(i)) for i in pvk_int_list]
+    res = _scalar_multiplications(pvk_int_list)
+    return bytes(bytearray(res))
+#==============================================================================
 # =============================================================================
-# def _scalar_multiplications(pvk_int_list):
-#     ''' Integer list passed to function. 65*len bytes uncompressed pubkey output. No Zero Point handling '''
-#     sz = len(pvk_int_list)
-#     res = (b'\x00') * (65 * sz)
-#     pvks = ''.join(pvk_int_list).encode('utf8')
-#     ice.scalar_multiplications(pvks, sz, res)
-#     return res
-# def scalar_multiplications(pvk_int_list):
-#     pvk_int_list = [fl(N+i) if i < 0 else fl(i) for i in pvk_int_list]
-#     res = _scalar_multiplications(pvk_int_list)
-#     return bytes(bytearray(res))
+# def point_multiplication(k, P):
+#     ''' k=scalar. P = Input Point. Output is 65 bytes uncompressed pubkey '''
+#     if type(P) == int: k,P = P,k
+#     def bits(k):
+#         while k:
+#             yield k & 1
+#             k >>= 1
+#     result = Zero
+#     addend = P
+#     for bit in bits(k):
+#         if bit == 1: result=point_addition(result,addend)
+#         addend=point_doubling(addend)
+#     return result
 # =============================================================================
 #==============================================================================
-def point_multiplication(k, P):
-    ''' k=scalar. P = Input Point. Output is 65 bytes uncompressed pubkey '''
+def _point_multiplication(pubkey_bytes, kk):
+    ''' Input Point and Integer value passed to function. 65 bytes uncompressed pubkey output '''
+    res = (b'\x00') * 65
+    bytes_value = bytes.fromhex(hex(kk)[2:].zfill(64))  # strict 32 bytes scalar
+    ice.point_multiplication(pubkey_bytes, bytes_value, res)
+    return res
+def point_multiplication(P, k):
     if type(P) == int: k,P = P,k
-    def bits(k):
-        while k:
-            yield k & 1
-            k >>= 1
-    result = Zero
-    addend = P
-    for bit in bits(k):
-        if bit == 1: result=point_addition(result,addend)
-        addend=point_doubling(addend)
-    return result
+    res = _point_multiplication(P, k)
+    return bytes(bytearray(res))
+
 #==============================================================================
 def _get_x_to_y(x_hex, is_even):
     ''' Input x_hex encoded as bytes and bool is_even. 32 bytes y of point output '''
@@ -629,10 +649,10 @@ def privatekey_group_to_ETH_address_bytes(pvk_int, m):
     res = _privatekey_group_to_ETH_address_bytes(start_pvk, m)
     return bytes(bytearray(res))
 #==============================================================================
-def bloom_check_add_mcpu(bigbuff, num_items, sz, check_add, bloom_bits, bloom_hashes, bloom_filter):
+def bloom_check_add_mcpu(bigbuff, num_items, sz, mcpu, check_add, bloom_bits, bloom_hashes, bloom_filter):
     found_array = (b'\x00') * num_items
 #    sz = 32; check_add = 0 for check and 1 for add
-    ice.bloom_check_add_mcpu(bigbuff, num_items, found_array, sz, check_add, bloom_bits, bloom_hashes, bloom_filter)
+    ice.bloom_check_add_mcpu(bigbuff, num_items, found_array, sz, mcpu, check_add, bloom_bits, bloom_hashes, bloom_filter)
     return found_array
 #==============================================================================
 def to_cpub(pub_hex):
@@ -670,14 +690,14 @@ def Fill_in_bloom(inp_list, _fp = 0.000001):
         else: tt = line
         res = ice.bloom_check_add(tt, len(tt), 1, _bits, _hashes, _bf)  # 1 = Add
     del res
-    return _bits, _hashes, _bf
+    return _bits, _hashes, _bf, _fp, len(inp_list)
 #==============================================================================
-def dump_bloom_file(output_bloom_file_name, _bits, _hashes, _bf):
+def dump_bloom_file(output_bloom_file_name, _bits, _hashes, _bf, _fp, _elem):
     with open(output_bloom_file_name, 'wb') as f:
-        pickle.dump((_bits, _hashes, _bf), f)
+        pickle.dump((_bits, _hashes, _bf, _fp, _elem), f)
 
 def read_bloom_file(bloom_file_name):
-    '''It will return the 3 output as _bits, _hashes, _bf'''
+    '''It will return the 5 output as _bits, _hashes, _bf, _fp, _elem'''
     with open(bloom_file_name, 'rb') as f:
         return pickle.load(f)
 #==============================================================================
@@ -686,6 +706,28 @@ def check_in_bloom(this_line, _bits, _hashes, _bf):
     else: tt = this_line
     if ice.bloom_check_add(tt, len(tt), 0, _bits, _hashes, _bf) > 0: return True
     else: return False
+#==============================================================================
+def create_bsgs_bloom_mcpu(mcpu, total_entries, _fp = 0.0000001):
+    if total_entries%(mcpu*1000) != 0:
+        total_entries = mcpu*1000*(total_entries//(mcpu*1000))
+        if total_entries == 0: total_entries = mcpu * 1000
+        print('[*] Number of elements should be a multiple of 1000*mcpu. Automatically corrected it to nearest value:',total_entries)
+    _bits, _hashes = bloom_para(total_entries, _fp)
+    _bf = bytes(b'\x00') * (_bits//8)
+    print(f'[+] bloom [bits: {_bits}] [hashes: {_hashes}] [size: {_bits//8} Bytes] [false prob: {_fp}]')
+    ice.create_bsgs_bloom_mcpu(mcpu, total_entries, _bits, _hashes, _bf)
+    return _bits, _hashes, _bf, _fp, total_entries
+#==============================================================================
+def bsgs_2nd_check_prepare(bP_elem = 2000000000):
+    if bP_elem < 8000000: bP_elem = 8000000  # Less than 8 million is not allowed
+    ice.bsgs_2nd_check_prepare(bP_elem)
+#==============================================================================
+def bsgs_2nd_check(pubkey_bytes, z1_int, bP_elem):
+    if z1_int < 0: z1_int = N+z1_int
+    hex_value = fl(z1_int).encode('utf8')
+    res = (b'\x00') * 32
+    found = ice.bsgs_2nd_check(pubkey_bytes, hex_value, bP_elem, res)
+    return found, res
 #==============================================================================
 def prepare_bin_file_work(in_file, out_file, lower = False):
     use0x = False

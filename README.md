@@ -40,6 +40,13 @@ ice.point_negation(P).hex()
 ice.point_doubling(P).hex()
 : '04484200af427941631f87f4ca153635156ceb0306e7033874e06a784088be5e3563868c14b34af7bc6206bcdbd63dee7a7825e595f8c45b07746e1b87da3091fc'
 
+ice.point_multiplication(P, 7).hex()
+: '048ea2016371a8e644f84252993527896b4c4d024a3e4e6c18246eb71b9c10363375be5a09dd9eaa819cdd50710309b5cc854aa910822be36cb28f88511132e4ce'
+
+Pn = ice.scalar_multiplications([43242, 543053, 329074523, 321785444032743])
+Pn[-65:].hex()
+: '04fe34b4c918a738c61f8e1fa594c737f452eba2f6a84a2f7912c0c4dc91957e4b0ca6ba19ef14bfbf08c21f2f69a93067eb99d9d08d069ee556dbfe17abfa931a'
+
 ice.pubkey_to_address(0, True, P)
 : '17eCpwzTCEDAbws2ucoZEy1iEcg1WrLKDp'
 
@@ -141,14 +148,20 @@ ice.checksum('What is the use of it?').hex()
 : '6bbe6051'
 
 xx = ['43253', 'hfoiefcope', 'cvt9', '4329r32hf39', '4e329jf4iehgf43']
-_bits, _hashes, _bf = ice.Fill_in_bloom(xx, 0.000001)
+_bits, _hashes, _bf, _fp, _elem = ice.Fill_in_bloom(xx, 0.000001)
 print(ice.check_in_bloom('cvt9', _bits, _hashes, _bf))
 : True
 
-ice.dump_bloom_file("my_bloom_file.bin", _bits, _hashes, _bf)
-_bits, _hashes, _bf = ice.read_bloom_file("my_bloom_file.bin")
+ice.dump_bloom_file("my_bloom_file.bin", _bits, _hashes, _bf, _fp, _elem)
+_bits, _hashes, _bf, _fp, _elem = ice.read_bloom_file("my_bloom_file.bin")
 print(ice.check_in_bloom('cvt9', _bits, _hashes, _bf))
 : True
+
+ice.bsgs_2nd_check_prepare(100000000)
+Q = ice.scalar_multiplication(0x10000000000000000000000005820545)
+found, pvk = ice.bsgs_2nd_check(Q, 0x10000000000000000000000000000000, 100000000)
+print(found, pvk.hex())
+:  True 0000000000000000000000000000000010000000000000000000000005820545
 
 P = ice.pub2upub('02CEB6CBBCDBDF5EF7150682150F4CE2C6F4807B349827DCDBDD1F2EFA885A2630')
 print(P.hex())
@@ -175,6 +188,9 @@ timeit ice.privatekey_to_address(0, True, 67)
 timeit ice.scalar_multiplication(3240945)
 3.1 µs ± 38.7 ns per loop (mean ± std. dev. of 7 runs, 100000 loops each)
 
+timeit ice.point_multiplication(P, 25465786)
+13 µs ± 98.4 ns per loop (mean ± std. dev. of 7 runs, 100000 loops each)
+
 timeit ice.point_increment(P)
 2.32 µs ± 20.6 ns per loop (mean ± std. dev. of 7 runs, 100000 loops each)
 
@@ -184,5 +200,5 @@ timeit ice.point_addition(P,P2)
 With 3500000 continuous keys in 1 group call, we get 3.5 Miilion Key/s Speed with 1 cpu:
 ```
 timeit ice.point_sequential_increment(3500000, P)
-1.01 s ± 5.37 ms per loop (mean ± std. dev. of 7 runs, 1 loop each)
+817 ms ± 15.3 ms per loop (mean ± std. dev. of 7 runs, 1 loop each)
 ```

@@ -1,3 +1,14 @@
+## Version: 0.1.18062023
+- Bugfix bloom_check_add_mcpu
+- Shifted functionalities from BSGS.dll to this library using create_bsgs_bloom_mcpu
+- Added addional check functions bsgs_2nd_check_prepare and bsgs_2nd_check to use in bsgs algo
+- Fill_in_bloom now also return the false probability and number of elements
+- dump_bloom_file and read_bloom_file takes also these 2 extra arguments _fp and _elem
+- Added function scalar_multiplications for multiple privatekey to Pubkey together from list of keys
+- transfer function point_multiplication to c++ for faster calculation
+- Incorporated PR39
+
+
 ## Version: 0.1.18052022
 - Added checksum for sha256
 - Unsupported type ERROR in fl now print detected Type
