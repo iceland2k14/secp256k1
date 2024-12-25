@@ -1,3 +1,19 @@
+## Version: 0.1.27032024
+- Bugfix bloom_check_add_mcpu
+- Added one_to_6pubkey and one_to_6privatekey using symmetry and endomorphism property
+- Check if the Pubkey is on the curve using pubkey_isvalid
+- Added chunks for easy slicing of returned pubkey bytes
+- Added verify_message for bitcoin signature verification and rsz, pubkey extraction
+- Added sha512, hmac_sha512, bip39seed_to_bip32masternode and mnemonics_to_bip32masternode
+- Added parse_derivation_path for single and range of childkeys using (0-5)
+- Mnemonics generation with create_valid_mnemonics for English
+- mnem_to_privatekey, mnem_to_address wrapper for simplication of intermediate steps (single or range)
+- Privatekey for any derivation BIP44,49,84 BTC and maybe altcoin by specifying SLIP0044
+- root_key and fingerprint added. Not updated till xprv, xpub of Extended pvk,pub
+- pubkey_to_coinaddress added for #41 issue
+- bech32_address_decode modified for p2wsh. pubkey_to_p2wsh_address added.
+
+
 ## Version: 0.1.18062023
 - Bugfix bloom_check_add_mcpu
 - Shifted functionalities from BSGS.dll to this library using create_bsgs_bloom_mcpu

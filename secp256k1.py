@@ -10,7 +10,7 @@ import sys
 import ctypes
 import math
 import pickle
-
+import base64
 ###############################################################################
 N = 0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141
 Zero=b'\x04\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
@@ -89,6 +89,18 @@ COIN_NLG  =	46
 COIN_LBRY =	47
 COIN_DNR  =	48
 COIN_BWK  =	49
+#==============================================================================
+# Mnem Lang [Only English is Enabled. No other Language Actiavted yet]
+MNEM_EN  = 0            # English
+MNEM_JP  = 1            # Japanese
+MNEM_KR  = 2            # Korean
+MNEM_SP  = 3            # Spanish
+MNEM_CS  = 4            # Chinese_simplified
+MNEM_CT  = 5            # Chinese_traditional
+MNEM_FR  = 6            # French
+MNEM_IT  = 7            # Italian
+MNEM_CZ  = 8            # Czech
+MNEM_PT  = 9            # Portuguese
 
 #==============================================================================
 ice.scalar_multiplication.argtypes = [ctypes.c_char_p, ctypes.c_char_p]   # pvk,ret
@@ -106,8 +118,14 @@ ice.point_doubling.argtypes = [ctypes.c_char_p, ctypes.c_char_p]  # upub,ret
 ice.privatekey_to_coinaddress.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_bool, ctypes.c_char_p]  # intcoin,012,comp,pvk
 ice.privatekey_to_coinaddress.restype = ctypes.c_void_p
 #==============================================================================
+ice.pubkey_to_coinaddress.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_bool, ctypes.c_char_p]  # intcoin,012,comp,upub
+ice.pubkey_to_coinaddress.restype = ctypes.c_void_p
+#==============================================================================
 ice.privatekey_to_address.argtypes = [ctypes.c_int, ctypes.c_bool, ctypes.c_char_p]  # 012,comp,pvk
 ice.privatekey_to_address.restype = ctypes.c_void_p
+#==============================================================================
+ice.pubkey_to_p2wsh_address.argtypes = [ctypes.c_char_p]  # upub
+ice.pubkey_to_p2wsh_address.restype = ctypes.c_void_p
 #==============================================================================
 ice.hash_to_address.argtypes = [ctypes.c_int, ctypes.c_bool, ctypes.c_char_p]  # 012,comp,hash
 ice.hash_to_address.restype = ctypes.c_void_p
@@ -131,6 +149,9 @@ ice.pub_endo1.argtypes = [ctypes.c_char_p, ctypes.c_char_p]  # upub,ret
 #==============================================================================
 ice.pub_endo2.argtypes = [ctypes.c_char_p, ctypes.c_char_p]  # upub,ret
 #==============================================================================
+ice.pubkey_isvalid.argtypes = [ctypes.c_char_p] #upub
+ice.pubkey_isvalid.restype = ctypes.c_bool #True or False
+#==============================================================================
 ice.b58_encode.argtypes = [ctypes.c_char_p]  # _h
 ice.b58_encode.restype = ctypes.c_void_p
 #==============================================================================
@@ -139,7 +160,18 @@ ice.b58_decode.restype = ctypes.c_void_p
 #==============================================================================
 ice.bech32_address_decode.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_char_p]  # coin,b32_addr,h160
 #==============================================================================
+ice.get_hmac_sha512.argtypes = [ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p] # k, klen, mess, mess_len, ret
+#==============================================================================
+ice.get_sha512.argtypes = [ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p] # input, len, ret
+#==============================================================================
+ice.mnem_to_masternode.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_char_p] # words, len, ret
+#==============================================================================
+ice.create_valid_mnemonics.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int]  # rbytes,len, lang
+ice.create_valid_mnemonics.restype = ctypes.c_void_p
+#==============================================================================
 ice.get_sha256.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_void_p] # input, len, ret
+#==============================================================================
+ice.get_sha256_iter.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_void_p, ctypes.c_ulonglong] # input, len, ret, iter
 #==============================================================================
 ice.create_baby_table.argtypes = [ctypes.c_ulonglong, ctypes.c_ulonglong, ctypes.c_char_p] # start,end,ret
 #==============================================================================
@@ -305,6 +337,13 @@ def privatekey_to_coinaddress(coin_type, addr_type, iscompressed, pvk_int):
     ice.free_memory(res)
     return addr
 #==============================================================================
+def pubkey_to_coinaddress(coin_type, addr_type, iscompressed, pubkey_bytes):
+    # type = 0 [p2pkh],  1 [p2sh],  2 [bech32]
+    res = ice.pubkey_to_coinaddress(coin_type, addr_type, iscompressed, pubkey_bytes)
+    addr = (ctypes.cast(res, ctypes.c_char_p).value).decode('utf8')
+    ice.free_memory(res)
+    return addr
+#==============================================================================
 def privatekey_to_address(addr_type, iscompressed, pvk_int):
     # type = 0 [p2pkh],  1 [p2sh],  2 [bech32]
     if pvk_int < 0: pvk_int = N+pvk_int
@@ -324,6 +363,13 @@ def hash_to_address(addr_type, iscompressed, hash160_bytes):
 def pubkey_to_address(addr_type, iscompressed, pubkey_bytes):
     # type = 0 [p2pkh],  1 [p2sh],  2 [bech32]
     res = ice.pubkey_to_address(addr_type, iscompressed, pubkey_bytes)
+    addr = (ctypes.cast(res, ctypes.c_char_p).value).decode('utf8')
+    ice.free_memory(res)
+    return addr
+#==============================================================================
+def pubkey_to_p2wsh_address(pubkey_bytes):
+    # [bech32 p2wsh]
+    res = ice.pubkey_to_p2wsh_address(pubkey_bytes)
     addr = (ctypes.cast(res, ctypes.c_char_p).value).decode('utf8')
     ice.free_memory(res)
     return addr
@@ -388,6 +434,34 @@ def pub_endo2(pubkey_bytes):
     res = _pub_endo2(pubkey_bytes)
     return bytes(bytearray(res))
 #==============================================================================
+def pubkey_isvalid(pubkey_bytes):
+    ''' check if the pubkey is on the curve '''
+    is_valid = ice.pubkey_isvalid(pubkey_bytes)
+    return is_valid
+#==============================================================================
+def one_to_6pubkey(pubkey_bytes):
+    # Pubkey = [x,y]  [x*beta%p, y]  [x*beta2%p, y] [x,p-y]  [x*beta%p, p-y]  [x*beta2%p, p-y]
+    # beta = 0x7ae96a2b657c07106e64479eac3434e99cf0497512f58995c1396c28719501ee
+    # beta2 = 0x851695d49a83f8ef919bb86153cbcb16630fb68aed0a766a3ec693d68e6afa40      # beta*beta
+    P1 = pubkey_bytes
+    P2 = pub_endo1(pubkey_bytes)
+    P3 = pub_endo2(pubkey_bytes)
+    P4 = point_negation(pubkey_bytes)
+    P5 = pub_endo1(P4)
+    P6 = pub_endo2(P4)
+    return P1, P2, P3, P4, P5, P6
+#==============================================================================
+def one_to_6privatekey(pvk_int):
+    lmda = 0x5363ad4cc05c30e0a5261c028812645a122e22ea20816678df02967c1b23bd72
+    lmda2 = 0xac9c52b33fa3cf1f5ad9e3fd77ed9ba4a880b9fc8ec739c2e0cfc810b51283ce      # lmda*lmda
+    #print('PVK1 : ', hex(pvk_int)[2:].zfill(64))
+    #print('PVK2 : ', hex(pvk_int*lmda%N)[2:].zfill(64))
+    #print('PVK3 : ', hex(pvk_int*lmda2%N)[2:].zfill(64))
+    #print('PVK4 : ', hex(N-pvk_int)[2:].zfill(64))
+    #print('PVK5 : ', hex(N-pvk_int*lmda%N)[2:].zfill(64))
+    #print('PVK6 : ', hex(N-pvk_int*lmda2%N)[2:].zfill(64))
+    return pvk_int, pvk_int*lmda%N, pvk_int*lmda2%N, N-pvk_int, N-pvk_int*lmda%N, N-pvk_int*lmda2%N
+#==============================================================================
 def b58py(data):
     B58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
 
@@ -417,8 +491,9 @@ def b58_decode(inp):
 def bech32_address_decode(addr, coin_type=0):
     ''' Input address in String format. Output h160 in hex string format
     [Note] p2wsh = bech32(sha256(21 + pubkey + ac)). So Decoding it not Needed '''
-    if len(addr) > 50: print('[Error] Bech32 p2wsh Not Supported. Result Truncated')
-    h160 = (b'\x00') * 20
+    if len(addr) > 50:
+        h160 = (b'\x00') * 32   # Bech32 p2wsh case
+    else: h160 = (b'\x00') * 20 # Bech32 p2wpkh case
     ice.bech32_address_decode(coin_type, addr.encode("utf-8"), h160)
     return bytes(bytearray(h160)).hex()
 #==============================================================================
@@ -461,6 +536,77 @@ def checksum(inp):
     res2 = get_sha256(res)
     return res2[:4]
 #==============================================================================
+def chunks(s, sz=65):
+    for start in range(0, len(s), sz):
+        yield s[start : start + sz]
+#==============================================================================
+def inv(a):
+    return pow(a, N - 2, N)
+#==============================================================================
+def msg_magic(message):
+    lm = len(message)
+    a = ((lm.to_bytes(1, 'little') if lm < 0xFD else b'\xFD' + lm.to_bytes(2, 'little')) 
+         if lm <= 0xFFFF else b'\xFE' + lm.to_bytes(4, 'little')) if lm <=0xFFFFFFFF else b'\xFF' + lm.to_bytes(8, 'little')
+    return b'\x18Bitcoin Signed Message:\n' + a + message.encode('utf-8')
+#==============================================================================
+def verify_message(address, signature, message):
+    out = _verify_message(address, signature, message)
+    if out == False:
+        print(f"Message Failed to verify from Address: {address}")
+    else:
+        r, s, z, is_compress, RP, pubkey = out
+        print(f'Rpoint: {RP.hex()}')
+        print(f'r : {hex(r)[2:]}')
+        print(f's : {hex(s)[2:]}')
+        print(f'z : {hex(z)[2:]}')
+        print(f'PubKey : {pubkey}')
+        print(f'Address : {address}')
+        print('\nsignature is Valid and Address is Verified.\n')
+        print('-----BEGIN BITCOIN SIGNED MESSAGE-----')
+        print(message)
+        print('-----BEGIN BITCOIN SIGNATURE-----')
+        print(address)
+        print(signature)
+        print('-----END BITCOIN SIGNATURE-----')
+#==============================================================================
+def _verify_message(address, signature, message):
+    """ See http://www.secg.org/download/aid-780/sec1-v2.pdf for the math """
+    sig = base64.b64decode(signature)
+    hd, r, s = sig[0], int.from_bytes(sig[1:33], 'big'), int.from_bytes(sig[33:], 'big')
+    msb = msg_magic(message)
+    z = int.from_bytes(get_sha256(get_sha256(msb)), 'big')
+    RP1 = pub2upub('02' + hex(r)[2:].zfill(64))
+    RP2 = pub2upub('03' + hex(r)[2:].zfill(64))
+    sdr = (s * inv(r)) % N
+    zdr = (z * inv(r)) % N
+    FF1 = point_subtraction( point_multiplication(RP1, sdr),
+                                scalar_multiplication(zdr) )
+    FF2 = point_subtraction( point_multiplication(RP2, sdr),
+                                scalar_multiplication(zdr) )
+    if address[0] == '1': #p2pkh compressed or uncompressed
+        if address == pubkey_to_address(0, True, FF1):
+            return r, s, z, True, RP1, point_to_cpub(FF1)
+        if address == pubkey_to_address(0, False, FF1):
+            return r, s, z, False, RP1, FF1.hex()[2:]
+    if address[0] == '3': #p2sh compressed
+        if address == pubkey_to_address(1, True, FF1):
+            return r, s, z, True, RP1, point_to_cpub(FF1)
+    if address[0] == 'b': #bech32 compressed
+        if address == pubkey_to_address(2, True, FF1):
+            return r, s, z, True, RP1, point_to_cpub(FF1)
+    if address[0] == '1': #p2pkh compressed or uncompressed
+        if address == pubkey_to_address(0, True, FF2):
+            return r, s, z, True, RP2, point_to_cpub(FF2)
+        if address == pubkey_to_address(0, False, FF2):
+            return r, s, z, False, RP2, FF2.hex()[2:]
+    if address[0] == '3': #p2sh compressed
+        if address == pubkey_to_address(1, True, FF2):
+            return r, s, z, True, RP2, point_to_cpub(FF2)
+    if address[0] == 'b': #bech32 compressed
+        if address == pubkey_to_address(2, True, FF2):
+            return r, s, z, True, RP2, point_to_cpub(FF2)
+    return False
+#==============================================================================
 def fl(sstr, length=64):
     ''' Fill input to exact 32 bytes. If input is int or str the return is str. if input is bytes return is bytes'''
     if type(sstr) == int: fixed = hex(sstr)[2:].zfill(length)
@@ -469,11 +615,19 @@ def fl(sstr, length=64):
     else: print("[Error] Input format [Integer] [Hex] [Bytes] allowed only. Detected : ", type(sstr))
     return fixed
 #==============================================================================
+def create_valid_mnemonics(strength = 128, lang = MNEM_EN):
+    # valid_entropy_bits = [128, 160, 192, 224, 256]
+    rbytes = os.urandom(strength // 8)
+    res = ice.create_valid_mnemonics(rbytes, len(rbytes), lang)
+    mnem = (ctypes.cast(res, ctypes.c_char_p).value).decode('utf8')
+    ice.free_memory(res)
+    return mnem
+#==============================================================================
 def pbkdf2_hmac_sha512_dll(words):
     seed_bytes = (b'\x00') * 64
 #    words = 'good push broken people salad bar mad squirrel joy dismiss merge jeans token wear boring manual doll near sniff turtle sunset lend invest foil'
     ice.pbkdf2_hmac_sha512_dll(seed_bytes, words.encode("utf-8"), len(words))
-    return seed_bytes
+    return bytes(bytearray(seed_bytes))
 #==============================================================================
 def pbkdf2_hmac_sha512_list(words_list):
     ''' strength is [12, 18, 24]. words_list is a list of strings with each line having valid mnemonics'''
@@ -483,14 +637,152 @@ def pbkdf2_hmac_sha512_list(words_list):
     seed_bytes = (b'\x00') * (64 * wl)
 #    words = 'good push broken people salad bar mad squirrel joy dismiss merge jeans token wear boring manual doll near sniff turtle sunset lend invest foil'
     ice.pbkdf2_hmac_sha512_list(seed_bytes, words.encode("utf-8"), len(words), strength, wl)
-    return seed_bytes
+    return bytes(bytearray(seed_bytes))
+#==============================================================================
+def mnemonics_to_bip32masternode(words):
+    digest_bytes = (b'\x00') * 64
+    ice.mnem_to_masternode(words.encode("utf-8"), len(words), digest_bytes)
+    key, chain_code = digest_bytes[:32], digest_bytes[32:]
+    return key, chain_code
+#==============================================================================
+def bip39seed_to_bip32masternode(seed):
+    h = hmac_sha512(b'Bitcoin seed', seed)
+    key, chain_code = h[:32], h[32:]
+    return key, chain_code
+#==============================================================================
+def _p2i(x = "44'"):
+    if "'" in x:    return 0x80000000 + int(x[:-1])
+    else:           return int(x)
+    
+def _parse_derivation_path(str_derivation_path="m/44'/60'/0'/0/0"):      # 60' is for ETH 0' is for BTC
+    path = []
+    sdp = str_derivation_path.replace(" ", "")
+    if sdp[0:2] != 'm/':
+        raise ValueError("Can't recognize derivation path. It should look like \"m/44'/0'/0'/0\".")
+        
+    for i in sdp.lstrip('m/').split('/'):
+        path.append(_p2i(i))
+        
+    return [path] # return a list of list
+
+def parse_derivation_path(str_derivation_path_range="m/44'/60'/0'/0/(0-5)"):      # 60' is for ETH 0' is for BTC
+    if str_derivation_path_range.count("(") == 0:   # No range, only single value
+        return _parse_derivation_path(str_derivation_path_range)
+    
+    def deplist(i = "(0-3)"):
+        if i[0] == '(':     # It is a range of values
+            flgh = False
+            if i[-1] == "'": 
+                flgh = True
+                dr = [int(x) for x in i.lstrip('(').rstrip(")'").split('-')]
+            else: 
+                dr = [int(x) for x in i.lstrip('(').rstrip(')').split('-')]
+             
+            return [str(i)+"'" if flgh else str(i) for i in range(dr[0], dr[1]+1)]   # +1 to include the last element
+    
+    sdp = str_derivation_path_range.replace(" ", "")
+    og = sdp.lstrip('m/').split('/')
+    path = [_p2i(x) for x in og[:-1]]        # Leaving last element of range childpath
+    
+    return path, deplist( og[-1] ) # A tuple of (first 4 values and list for last value range)
+#==============================================================================
+def derive_bip32childkey(parent_key, parent_chain_code, i):
+    assert len(parent_key) == 32
+    assert len(parent_chain_code) == 32
+    k = parent_chain_code
+    if (i & 0x80000000) != 0:
+        key = b'\x00' + parent_key
+    else:
+        key = bytes.fromhex(point_to_cpub(scalar_multiplication(int.from_bytes(parent_key, byteorder='big'))))
+    d = key + bytes.fromhex(hex(i)[2:].zfill(8))
+    while True:
+        h = hmac_sha512(k, d)
+        key, chain_code = h[:32], h[32:]
+        a = int.from_bytes(key, byteorder='big')
+        b = int.from_bytes(parent_key, byteorder='big')
+        key = (a + b) % N
+        if a < N and key != 0:
+            key = key.to_bytes(32, byteorder='big')
+            break
+        d = b'\x01' + h[32:] + bytes.fromhex(hex(i)[2:].zfill(8))
+    return key, chain_code
+#==============================================================================
+def bip39seed_to_privatekey(bip39seed, str_derivation_path = "m/44'/0'/0'/0/0"): # ' is Hardened otherwise Normal
+    # suports single "m/44'/0'/0'/0/0" and range of child "m/44'/0'/0'/0/(11-21)"
+    derivation_path = parse_derivation_path(str_derivation_path)
+    master_private_key, master_chain_code = bip39seed_to_bip32masternode(bip39seed)
+    private_key, chain_code = master_private_key, master_chain_code
+    
+    
+    for i in derivation_path[0]:    # All values for single case. In case of range Except last element.
+        # parent_fingerprint = fingerprint_from_pvk(int(private_key.hex(), 16))
+        # child_number_bytes = bytes.fromhex(hex(i)[2:])
+        # depth_byte : starts from 1 2 3 4 5
+        private_key, chain_code = derive_bip32childkey(private_key, chain_code, i)
+        
+    if len(derivation_path) == 2:   # check if range case 
+        pvklist = []
+        for i in derivation_path[1]:
+            # parent_fingerprint = fingerprint_from_pvk(int(private_key.hex(), 16))
+            # child_number_bytes = bytes.fromhex(hex(i)[2:])
+            # depth_byte = b'\05' # this one is Last
+            tpvk, _ = derive_bip32childkey(private_key, chain_code, _p2i(i))
+            pvklist.append(tpvk)
+        return pvklist                  # list of bytes
+    return private_key                  # bytes
+#==============================================================================
+def mnem_to_privatekey(words, str_derivation_path = "m/44'/0'/0'/0/0"): # ' is Hardened otherwise Normal
+    # suports single "m/44'/0'/0'/0/0" and range of child "m/44'/0'/0'/0/(11-21)"    
+    seed = pbkdf2_hmac_sha512_dll(words)
+    return bip39seed_to_privatekey(seed, str_derivation_path) # either bytes or list of bytes
+#==============================================================================
+def mnem_to_address(words, addr_type, iscompressed, str_derivation_path = "m/44'/0'/0'/0/0"): # ' is Hardened otherwise Normal
+    # suports single "m/44'/0'/0'/0/0" and range of child "m/44'/0'/0'/0/(11-21)"    
+    seed = pbkdf2_hmac_sha512_dll(words)
+    pvks = bip39seed_to_privatekey(seed, str_derivation_path) # either bytes or list of bytes
+    if type(pvks) == list:
+        return [privatekey_to_address(addr_type, iscompressed, int(line.hex(), 16)) for line in pvks]   # list of addresses
+    return privatekey_to_address(addr_type, iscompressed, int(pvks.hex(), 16)) # single address
+#==============================================================================
+def fingerprint_from_pvk(k): # input int key
+    return privatekey_to_h160(0, True, k)[:4]
+#==============================================================================
+def root_key(master_private_key, master_chain_code, version = '0488ade4'):
+    '''This same function can be modified for getting xprv, xpub of extended keys.
+    Need to return also the parent_fingerprint, child_number_bytes, depth_byte to use here
+    '''
+    version_bytes = bytes.fromhex(version)   # Mainnet [Private: '0488ade4'] [Public: '0488b21e']
+    key_bytes = b'\x00' + master_private_key
+    # version_bytes, depth_byte, parent_fingerprint, child_number_bytes, master_chain_code, key_bytes
+    inp = version_bytes + b'\x00' + b'\x00' * 4 + b'\x00' * 4 + master_chain_code + key_bytes
+    xp = b58_encode(inp + checksum(inp))
+    return xp
+#==============================================================================
+def hmac_sha512(key_bytes, message_bytes):
+    digest_bytes = (b'\x00') * 64
+    if type(key_bytes) == str: key_bytes = key_bytes.encode("utf-8")
+    if type(message_bytes) == str: message_bytes = message_bytes.encode("utf-8")
+    ice.get_hmac_sha512(key_bytes, len(key_bytes), message_bytes, len(message_bytes), digest_bytes)
+    return bytes(bytearray(digest_bytes))
+#==============================================================================
+def sha512(input_bytes):
+    digest_bytes = (b'\x00') * 64
+    if type(input_bytes) == str: input_bytes = input_bytes.encode("utf-8")
+    ice.get_sha512(input_bytes, len(input_bytes), digest_bytes)
+    return bytes(bytearray(digest_bytes))
 #==============================================================================
 def get_sha256(input_bytes):
     digest_bytes = (b'\x00') * 32
     if type(input_bytes) == str: input_bytes = input_bytes.encode("utf-8")
 #    MiniKey example
     ice.get_sha256(input_bytes, len(input_bytes), digest_bytes)
-    return digest_bytes
+    return bytes(bytearray(digest_bytes))
+#==============================================================================
+def get_sha256_iter(input_bytes, iteration = 1):
+    digest_bytes = (b'\x00') * 32
+    if type(input_bytes) == str: input_bytes = input_bytes.encode("utf-8")
+    ice.get_sha256_iter(input_bytes, len(input_bytes), digest_bytes, iteration)
+    return bytes(bytearray(digest_bytes))
 #==============================================================================
 def create_baby_table(start_value, end_value):
     res = (b'\x00') * ((1+end_value-start_value) * 32)
