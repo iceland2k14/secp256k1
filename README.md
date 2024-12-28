@@ -62,6 +62,9 @@ ice.pubkey_to_address(1, True, P)
 ice.pubkey_to_address(2, True, P)
 : 'bc1qfrdqfz89qxllsg3wrj46f9pegung0n8vj53fsk'
 
+ice.pubkey_to_p2wsh_address(P)
+'bc1qs4l2yq57cznm87ty22mmllscq08sqgsvf06ap9usaug0h0cxsuas9jzg6y'
+
 ice.privatekey_to_h160(1, True, 0x437af32d9e723fb9cd0).hex()
 : '2ab7b63dd0de957b72df9eded24cd62e80d131f4'
 
@@ -100,6 +103,8 @@ ice.btc_wif_to_pvk_hex('KwDiBf89QgGbjEhKnhXJuH7LrciVrZi3qYjgd9R7rErzLE79yTdy')
 ice.address_to_h160('151F838jqc92vshQNBXXf95hSW5hHbXHDq')
 : '2bec4a80756fae715eec388727dacbca9ec34b54'
 
+ice.bech32_address_decode('bc1qdj7v4lgweum6g8r8fjh5gedrwtg0pmf32uxnsvtf27adav96gftsudprkk')
+: '6cbccafd0ecf37a41c674caf4465a372d0f0ed31570d38316957badeb0ba4257'
 ice.bech32_address_decode('bc1q90ky4qr4d7h8zhhv8zrj0kkte20vxj65uft745')
 : '2bec4a80756fae715eec388727dacbca9ec34b54'
 ice.bech32_address_decode('ltc1q90ky4qr4d7h8zhhv8zrj0kkte20vxj65c436dy', ice.COIN_LTC)
@@ -144,8 +149,75 @@ ice.privatekey_to_coinaddress(ice.COIN_DASH, 0, True, 0x1b1f)
 ice.privatekey_to_coinaddress(ice.COIN_RVN, 0, True, 0x1b1f)
 : 'RDePbshJ2nudXVcN1kQbZv88jwwKWs42X6'
 
+ice.pubkey_to_coinaddress(16, 0, True, P)
+: 'DBnJNCw6Ve7T8x3deCo7njBK7kQJrfyMS4'
+
 ice.checksum('What is the use of it?').hex()
 : '6bbe6051'
+
+for Q in ice.one_to_6pubkey(P): print(Q.hex())
+: 0488de60bd8c187071fc486979f2c9696c3602c562fbba6922993ff665eae81b4f8adf94f4e2a50b05fe35aee42c146f6415e5cf524b6b1b5a8d17de8b741a5a21
+: 0441d68a94e621d33139103b6e4b9d8ac94103ba746952e4b322b7e7ba8c1d75d18adf94f4e2a50b05fe35aee42c146f6415e5cf524b6b1b5a8d17de8b741a5a21
+: 04354b14ad8dc5bc5ccaa75b17c1990bca88f980289af2b22a440821de88fa6b0f8adf94f4e2a50b05fe35aee42c146f6415e5cf524b6b1b5a8d17de8b741a5a21
+: 0488de60bd8c187071fc486979f2c9696c3602c562fbba6922993ff665eae81b4f75206b0b1d5af4fa01ca511bd3eb909bea1a30adb494e4a572e821738be5a20e
+: 0441d68a94e621d33139103b6e4b9d8ac94103ba746952e4b322b7e7ba8c1d75d175206b0b1d5af4fa01ca511bd3eb909bea1a30adb494e4a572e821738be5a20e
+: 04354b14ad8dc5bc5ccaa75b17c1990bca88f980289af2b22a440821de88fa6b0f75206b0b1d5af4fa01ca511bd3eb909bea1a30adb494e4a572e821738be5a20e
+
+for kk in ice.one_to_6privatekey(48732985723059723057387687698969865642): print(hex(kk))
+: 0x24a9a1b3b4b27e77c678c06c13072daa
+: 0xc0b7df046e39daffe3fadab9447d0072de63cc3c8d135419aeeffd2b57c4aad3
+: 0x3f4820fb91c625001c052546bb82ff8bb7a16ef66d82cdaa4a69a0f5656a68c4
+: 0xfffffffffffffffffffffffffffffffe96053b32fa9621c3f9599e20bd2f1397
+: 0x3f4820fb91c625001c052546bb82ff8bdc4b10aa22354c2210e261617871966e
+: 0xc0b7df046e39daffe3fadab9447d0073030d6df041c5d2917568bd976acbd87d
+
+ice.pubkey_isvalid(P)
+: True
+
+ice.create_valid_mnemonics(256)
+: 'crater life cigar local parade soft sea yard argue lion body panic buddy olympic dose better topic trash six noodle order sugar similar wheat'
+
+m = ice.create_valid_mnemonics()
+ice.mnem_to_privatekey(m).hex()
+'a573867bcd4e83737eb30377591dcf3e052aa97f7c8d5892f7b947b4b30072b4'
+
+m = 'oval vapor neck three sing plunge east matter shaft cement dutch pepper hen know short'
+ice.btc_pvk_to_wif( ice.mnem_to_privatekey(m, "m/44'/0'/0'/0/0") )
+: 'KxuBKvRM4UGzuKYqk6aDCDdNrRCaQPm49fVmYgM1Em6x5GePE1om'
+ice.btc_pvk_to_wif( ice.mnem_to_privatekey(m, "m/49'/0'/0'/0/0") )
+: 'KyEYyzwLY2JSFAUzfuUzNmKFJApcYKJCRZANvyQa4Cw1mdSRSEoK'
+ice.btc_pvk_to_wif( ice.mnem_to_privatekey(m, "m/84'/0'/0'/0/0") )
+: 'L4AZnxZTMgVQWvabShYgCtx1A94n71P99onE3XxeBjTp9if7XJs1'
+
+for line in ice.mnem_to_privatekey(m, "m/44'/0'/0'/0/(10-12)"): print(line.hex())
+: c61b424e801a04f1490733dd470c84b38f5270cebe294c122cbe2ced02d450b0
+: a17a51c6b1cddf319ad90e20f8c1f618cd5fda4c0ac7d1f2e62cb761352af44f
+: de448783f0c32c4b02b29f97d06e3b2bd00d36a4e69db64bddff88993a1ef695
+
+ice.mnem_to_address(m, 2, True)
+'bc1qk4g3dt35uuzkrzzzd66ttafv9lfsamhpscam92'
+
+ice.mnem_to_address(m, 0, True, "m/44'/0'/0'/0/(0-3)")
+: ['1HXiSrdbhhPPoFNeKYpurap9PRnYHJiwj2', '1Kr6ZtaG86T7WGRtVxySsxfsYdZCjKNidE', '1HEufz6bsySRcfyaAjm3mHQaRTJqGzVo8n', '1Bxyj5EhgysjniyQzENqTLyxBtxoYbybae']
+
+ice.verify_message('1Fo65aKq8s8iquMt6weF1rku1moWVEd5Ua','IIONt3uYHbMh+vUnqDBGHP2gGu1Q2Fw0WnsKj05eT9P8KI2kGgPniiPirCd5IeLRnRdxeiehDxxsyn/VujUaX8o=', 
+'Anything one man can imagine, other men can make real')
+Rpoint: 04838db77b981db321faf527a830461cfda01aed50d85c345a7b0a8f4e5e4fd3fcb470f62d351e9e0f653cd78f74ecc381a92e5cb43f477f18284283d4150d6c8d
+r : 838db77b981db321faf527a830461cfda01aed50d85c345a7b0a8f4e5e4fd3fc
+s : 288da41a03e78a23e2ac277921e2d19d17717a27a10f1c6cca7fd5ba351a5fca
+z : 9233d997d01ccf4b46187b215819354f107e76d9c27968bc460e4463334ee7c3
+PubKey : 03633cbe3ec02b9401c5effa144c5b4d22f87940259634858fc7e59b1c09937852
+Address : 1Fo65aKq8s8iquMt6weF1rku1moWVEd5Ua
+
+signature is Valid and Address is Verified.
+
+-----BEGIN BITCOIN SIGNED MESSAGE-----
+Anything one man can imagine, other men can make real
+-----BEGIN BITCOIN SIGNATURE-----
+1Fo65aKq8s8iquMt6weF1rku1moWVEd5Ua
+IIONt3uYHbMh+vUnqDBGHP2gGu1Q2Fw0WnsKj05eT9P8KI2kGgPniiPirCd5IeLRnRdxeiehDxxsyn/VujUaX8o=
+-----END BITCOIN SIGNATURE-----
+
 
 xx = ['43253', 'hfoiefcope', 'cvt9', '4329r32hf39', '4e329jf4iehgf43']
 _bits, _hashes, _bf, _fp, _elem = ice.Fill_in_bloom(xx, 0.000001)

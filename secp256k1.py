@@ -617,6 +617,8 @@ def fl(sstr, length=64):
 #==============================================================================
 def create_valid_mnemonics(strength = 128, lang = MNEM_EN):
     # valid_entropy_bits = [128, 160, 192, 224, 256]
+    if strength not in [128, 160, 192, 224, 256]: 
+        return 'Invalid strength'
     rbytes = os.urandom(strength // 8)
     res = ice.create_valid_mnemonics(rbytes, len(rbytes), lang)
     mnem = (ctypes.cast(res, ctypes.c_char_p).value).decode('utf8')
