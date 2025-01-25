@@ -134,6 +134,12 @@ ice.get_sha256('S6c56bnXQiBjk9mqSYE7ykVQ7NzrRy').hex()
 ice.get_sha256(P).hex()
 : '739c4ba018e1877d5c82fa60b7e2304776e7bf39af5dc9b4c05152ea78b822f9'
 
+ice.rmd160(P).hex()
+: '90c246d4c39680f26ff43c6bd742d0c0b542a600'
+
+ice.hash160(P).hex()
+: '98d3a9ed3eb034e9531f7a6d281d55422f1a1351'
+
 ice.privatekey_to_coinaddress(ice.COIN_LTC, 0, True, 0x1b1f)
 : 'LPb9na7qWdM7iHwKiiQmkQrhBtr11n8ywb'
 
@@ -154,6 +160,9 @@ ice.pubkey_to_coinaddress(16, 0, True, P)
 
 ice.checksum('What is the use of it?').hex()
 : '6bbe6051'
+
+ice.create_burn_address('ADayWiLLcomeWheniceLandisGoingToSoLvebitCoinPuzzLe', 'X')
+: ['1ADayWiLLcomeWheniceLandisXXVF7Q3', '1GoingToSoLvebitCoinPuzzLeXXxuijG']
 
 for Q in ice.one_to_6pubkey(P): print(Q.hex())
 : 0488de60bd8c187071fc486979f2c9696c3602c562fbba6922993ff665eae81b4f8adf94f4e2a50b05fe35aee42c146f6415e5cf524b6b1b5a8d17de8b741a5a21
@@ -231,9 +240,18 @@ print(ice.check_in_bloom('cvt9', _bits, _hashes, _bf))
 
 ice.bsgs_2nd_check_prepare(100000000)
 Q = ice.scalar_multiplication(0x10000000000000000000000005820545)
-found, pvk = ice.bsgs_2nd_check(Q, 0x10000000000000000000000000000000, 100000000)
+found, pvk = ice.bsgs_2nd_check(Q, 0x10000000000000000000000000000000)
 print(found, pvk.hex())
 :  True 0000000000000000000000000000000010000000000000000000000005820545
+
+ice.dump_bsgs_2nd('file_2nd_dump.bin', True)
+: [+] [N2:5000000, N3:250000, N4:12500]  Vec4th Size    : 25000
+: [+] [bloom2nd (34 MB)] [bloom3rd (1 MB)] [bloom4th (0 MB)]
+
+ice.load_bsgs_2nd('file_2nd_dump.bin', True)
+: [+] [N2:5000000, N3:250000, N4:12500]  Vec4th Size    : 25000
+: [+] [bloom2nd (34 MB)] [bloom3rd (1 MB)] [bloom4th (0 MB)]
+
 
 P = ice.pub2upub('02CEB6CBBCDBDF5EF7150682150F4CE2C6F4807B349827DCDBDD1F2EFA885A2630')
 print(P.hex())
@@ -249,6 +267,27 @@ ice.prepare_bin_file("eth_addr_file.txt", "eth_sorted.bin", True, True)
 ice.Load_data_to_memory("eth_sorted.bin", False)
 ice.check_collision(this_key_eth_bytes)
 : True
+
+Pn = [line for line in ice.chunks(ice.point_sequential_increment(4000, P))]
+for i in range(2784900, 2789900, 1500):  
+  print(i, ice.check_in_xor(ice.scalar_multiplication(i), _bits, _hashes, _xf))
+: 2784900 False
+: 2786400 True
+: 2787900 True
+: 2789400 False
+
+Q = b''; for i in range(2784900, 2789900, 1500): Q += ice.scalar_multiplication(i)
+print(ice.check_in_xor_mcpu(Q, 4, 65, 4, _bits, _hashes, _xf).hex())
+: 00010100
+
+dd = ice.bsgs_xor_create_mcpu(4, 10000000)
+: [+] XOR [bits: 335477043] [hashes: 23] [size: 41934630 Bytes] [false prob: 1e-07]
+: [+] Thread  0: 0x0000000000000001 -> 0x00000000002625A0
+: [+] Thread  1: 0x00000000002625A1 -> 0x00000000004C4B40
+: [+] Thread  2: 0x00000000004C4B41 -> 0x00000000007270E0
+: [+] Thread  3: 0x00000000007270E1 -> 0x0000000000989680
+: Progress: 10000000 / 10000000 entries completed (100.00%)
+
 
 ```
 # Speed

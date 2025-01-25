@@ -164,6 +164,10 @@ ice.get_hmac_sha512.argtypes = [ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p, 
 #==============================================================================
 ice.get_sha512.argtypes = [ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p] # input, len, ret
 #==============================================================================
+ice.rmd160.argtypes = [ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p] # input, len, ret
+#==============================================================================
+ice.hash160.argtypes = [ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p] # input, len, ret
+#==============================================================================
 ice.mnem_to_masternode.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_char_p] # words, len, ret
 #==============================================================================
 ice.create_valid_mnemonics.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int]  # rbytes,len, lang
@@ -188,6 +192,8 @@ ice.point_vector_addition.argtypes = [ctypes.c_ulonglong, ctypes.c_char_p, ctype
 ice.point_sequential_increment_P2.argtypes = [ctypes.c_ulonglong, ctypes.c_char_p, ctypes.c_char_p] # num,upub1,ret
 #==============================================================================
 ice.point_sequential_increment_P2_mcpu.argtypes = [ctypes.c_ulonglong, ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p] # num,upub1,mcpu,ret
+#==============================================================================
+ice.point_sequential_increment_P2X_mcpu.argtypes = [ctypes.c_ulonglong, ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p] # num,upub1,mcpu,retX
 #==============================================================================
 ice.point_sequential_increment.argtypes = [ctypes.c_ulonglong, ctypes.c_char_p, ctypes.c_char_p] # num,upub1,ret
 #==============================================================================
@@ -225,19 +231,85 @@ ice.create_bsgs_bloom_mcpu.argtypes = [ctypes.c_int, ctypes.c_ulonglong, ctypes.
 #==============================================================================
 ice.bsgs_2nd_check_prepare.argtypes = [ctypes.c_ulonglong] # bP_elem
 #==============================================================================
-ice.bsgs_2nd_check.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_ulonglong, ctypes.c_char_p] # upub, z1, bP_elem, ret
+ice.dump_bsgs_state.argtypes = [ctypes.c_char_p, ctypes.c_bool] # binary_dump_file_out, verbose
+#==============================================================================
+ice.load_bsgs_state.argtypes = [ctypes.c_char_p, ctypes.c_bool] # binary_dump_file_in, verbose
+#==============================================================================
+ice.bsgs_2nd_check.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p] # upub, z1, bP_elem, ret
 ice.bsgs_2nd_check.restype = ctypes.c_bool #True or False
 #==============================================================================
 ice.Load_data_to_memory.argtypes = [ctypes.c_char_p, ctypes.c_bool] #sorted_bin_file_h160, verbose
 #==============================================================================
 ice.check_collision.argtypes = [ctypes.c_char_p] #h160
 ice.check_collision.restype = ctypes.c_bool #True or False
+#==============================================================================
+ice.check_collision_mcpu.argtypes = [ctypes.c_char_p, ctypes.c_int, ctypes.c_int, ctypes.c_char_p] #h160_array, num_items, mcpu, found_array
+#==============================================================================
+ice.xor_filter_add.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_uint64, ctypes.c_uint8, ctypes.c_char_p] #buff, len, _bits, _hashes, _xf
+#==============================================================================
+ice.xor_filter_check.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_uint64, ctypes.c_uint8, ctypes.c_char_p] #buff, len, _bits, _hashes, _xf
+ice.xor_filter_check.restype = ctypes.c_int
+#==============================================================================
+ice.xor_filter_check_mcpu.argtypes = [ctypes.c_void_p, ctypes.c_ulonglong, ctypes.c_int, ctypes.c_int, ctypes.c_uint64, ctypes.c_uint8, ctypes.c_char_p, ctypes.c_char_p] #buff, num_items, len, mcpu, _bits, _hashes, _xf, found_array
+#==============================================================================
+ice.bsgs_xor_create_mcpu.argtypes = [ctypes.c_int, ctypes.c_ulonglong, ctypes.c_uint64, ctypes.c_uint8, ctypes.c_char_p] #mcpu, total_entries, _bits, _hashes, _xf
 
 ice.init_secp256_lib()
 #==============================================================================
 ###############################################################################
 
+# For Operator Overloading Purpose. Like P + Q, Q * 20, P / 5 etc etc.
+class UpubData:
+    def __init__(self, data):
+        if len(data) != 65:
+            raise ValueError("Data must be 65 bytes")
+        self.data = data
+    
+    def __add__(self, other):
+        if not isinstance(other, UpubData):
+            return NotImplemented
+        return UpubData(point_addition(self.data, other.data))
+    
+    def __sub__(self, other):
+        if not isinstance(other, UpubData):
+            return NotImplemented
+        return UpubData(point_subtraction(self.data, other.data))
 
+    def __neg__(self):
+        return UpubData(point_negation(self.data))
+    
+    def __mul__(self, other):
+        if isinstance(other, int):
+            return UpubData(point_multiplication(self.data, other))
+        return NotImplemented
+
+    def __rmul__(self, other):
+        return self.__mul__(other)
+
+    def __truediv__(self, other):
+        if isinstance(other, int):
+            return UpubData(point_division(self.data, other))
+        return NotImplemented
+    
+    def to_bytes(self): 
+        return self.data
+    
+    def __repr__(self):
+        return f"UpubData({self.data})"
+    
+    def __str__(self): 
+        return f"{self.data.hex()}"
+
+def upub(data): 
+    if isinstance(data, UpubData): 
+        return data 
+    return UpubData(data)
+
+# Example. Q = (((P * 160 )-P) /77).to_bytes()
+
+
+###############################################################################
+#==============================================================================
 def version():
     ice.version()   
 #==============================================================================
@@ -290,7 +362,12 @@ def point_multiplication(P, k):
     if type(P) == int: k,P = P,k
     res = _point_multiplication(P, k)
     return bytes(bytearray(res))
-
+#==============================================================================
+def point_division(P, k):
+    ''' Input Point and Integer value passed to function. 65 bytes uncompressed pubkey output '''
+    kk = inv(k)
+    res = point_multiplication(P, kk)
+    return bytes(bytearray(res))
 #==============================================================================
 def _get_x_to_y(x_hex, is_even):
     ''' Input x_hex encoded as bytes and bool is_even. 32 bytes y of point output '''
@@ -502,6 +579,21 @@ def address_to_h160(p2pkh):
     h1 = b58_decode(p2pkh)
     return h1[2:-8]
 #==============================================================================
+def create_burn_address(vanity = 'iceLand', filler = 'x'):
+    # create_burn_address('ADayWiLLcomeWheniceLandisGoingToSoLvebitCoinPuzzLe', 'X')
+    out = []
+    bs58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
+    for i in vanity:
+        if i not in bs58:
+            return "invalid char found in vanity --> : " + i
+    vanity = [vanity[i:i+25] for i in range(0,len(vanity),25)] # For longer text make many address
+    for t in vanity:
+        s = t.ljust(30, filler) if t[0] == '1' else ('1'+t).ljust(30, filler) + '111'
+        h = address_to_h160(s)
+        out.append(hash_to_address(0, True, bytes.fromhex(h)))
+    if len(out) == 1: return out[0]
+    else:    return out
+#==============================================================================
 def btc_wif_to_pvk_hex(wif):
     pvk = ''
     if wif[0] == '5':
@@ -572,7 +664,7 @@ def verify_message(address, signature, message):
 def _verify_message(address, signature, message):
     """ See http://www.secg.org/download/aid-780/sec1-v2.pdf for the math """
     sig = base64.b64decode(signature)
-    hd, r, s = sig[0], int.from_bytes(sig[1:33], 'big'), int.from_bytes(sig[33:], 'big')
+    _, r, s = sig[0], int.from_bytes(sig[1:33], 'big'), int.from_bytes(sig[33:], 'big')
     msb = msg_magic(message)
     z = int.from_bytes(get_sha256(get_sha256(msb)), 'big')
     RP1 = pub2upub('02' + hex(r)[2:].zfill(64))
@@ -609,7 +701,7 @@ def _verify_message(address, signature, message):
 #==============================================================================
 def fl(sstr, length=64):
     ''' Fill input to exact 32 bytes. If input is int or str the return is str. if input is bytes return is bytes'''
-    if type(sstr) == int: fixed = hex(sstr)[2:].zfill(length)
+    if type(sstr) == int: fixed = hex(sstr%N)[2:].zfill(length)
     elif type(sstr) == str: fixed = sstr[2:].zfill(length) if sstr[:2].lower() == '0x' else sstr.zfill(length)
     elif type(sstr) == bytes: fixed = (b'\x00') * (32 - len(sstr)) + sstr
     else: print("[Error] Input format [Integer] [Hex] [Bytes] allowed only. Detected : ", type(sstr))
@@ -773,6 +865,17 @@ def sha512(input_bytes):
     ice.get_sha512(input_bytes, len(input_bytes), digest_bytes)
     return bytes(bytearray(digest_bytes))
 #==============================================================================
+def hash160(input_bytes):
+    digest_bytes = (b'\x00') * 20
+    if type(input_bytes) == str: input_bytes = input_bytes.encode("utf-8")
+    ice.hash160(input_bytes, len(input_bytes), digest_bytes)
+    return bytes(bytearray(digest_bytes))
+#==============================================================================
+def rmd160(input_bytes):
+    digest_bytes = (b'\x00') * 20
+    ice.rmd160(input_bytes, len(input_bytes), digest_bytes)
+    return bytes(bytearray(digest_bytes))
+#==============================================================================
 def get_sha256(input_bytes):
     digest_bytes = (b'\x00') * 32
     if type(input_bytes) == str: input_bytes = input_bytes.encode("utf-8")
@@ -844,7 +947,8 @@ def _point_sequential_increment_P2(num, pubkey1_bytes):
     ice.point_sequential_increment_P2(num, pubkey1_bytes, res)
     return res
 def point_sequential_increment_P2(num, pubkey1_bytes):
-    ''' This is the fastest implementation to add point P2 in the given Point sequentially.'''
+    ''' Use init_P2_Group(P2) to initialize it just once.
+    This is the fastest implementation to add point P2 in the given Point sequentially.'''
     if num <= 0: num = 1
     res = _point_sequential_increment_P2(num, pubkey1_bytes)
     return bytes(bytearray(res))
@@ -854,9 +958,21 @@ def _point_sequential_increment_P2_mcpu(num, pubkey1_bytes, mcpu):
     ice.point_sequential_increment_P2_mcpu(num, pubkey1_bytes, mcpu, res)
     return res
 def point_sequential_increment_P2_mcpu(num, pubkey1_bytes, mcpu=os.cpu_count()):
-    ''' This is the fastest multi CPU implementation to add point P2 in the given Point sequentially. Threads are Not optimised yet'''
+    ''' Use init_P2_Group(P2) to initialize it just once.
+    This is the fastest multi CPU implementation to add point P2 in the given Point sequentially. Threads are Not optimised yet'''
     if num <= 0: num = 1
     res = _point_sequential_increment_P2_mcpu(num, pubkey1_bytes, mcpu)
+    return bytes(bytearray(res))
+#==============================================================================
+def _point_sequential_increment_P2X_mcpu(num, pubkey1_bytes, mcpu):
+    res = (b'\x00') * (32 * num)  # only X is returned from pubkeys
+    ice.point_sequential_increment_P2X_mcpu(num, pubkey1_bytes, mcpu, res)
+    return res
+def point_sequential_increment_P2X_mcpu(num, pubkey1_bytes, mcpu=os.cpu_count()):
+    ''' Use init_P2_Group(P2) to initialize it just once.
+    This is the fastest multi CPU implementation to add point P2 in the given Point sequentially. Threads are Not optimised yet'''
+    if num <= 0: num = 1
+    res = _point_sequential_increment_P2X_mcpu(num, pubkey1_bytes, mcpu)
     return bytes(bytearray(res))
 #==============================================================================
 def _point_sequential_increment(num, pubkey1_bytes):
@@ -1016,11 +1132,21 @@ def bsgs_2nd_check_prepare(bP_elem = 2000000000):
     if bP_elem < 8000000: bP_elem = 8000000  # Less than 8 million is not allowed
     ice.bsgs_2nd_check_prepare(bP_elem)
 #==============================================================================
-def bsgs_2nd_check(pubkey_bytes, z1_int, bP_elem):
+def dump_bsgs_2nd(output_bin_file, verbose = True):
+    '''output_bin_file is a binary dump file of bsgs_2nd_check_prepare data in RAM. 
+    It can be loaded using load_bsgs_2nd and then used in bsgs_2nd_check'''
+    ice.dump_bsgs_state(output_bin_file.encode("utf-8"), verbose)
+#==============================================================================
+def load_bsgs_2nd(input_bin_file, verbose = True):
+    '''input_bin_file is a binary dump file of bsgs_2nd_check_prepare data. 
+    It can be used in bsgs_2nd_check'''
+    ice.load_bsgs_state(input_bin_file.encode("utf-8"), verbose)
+#==============================================================================
+def bsgs_2nd_check(pubkey_bytes, z1_int):
     if z1_int < 0: z1_int = N+z1_int
     hex_value = fl(z1_int).encode('utf8')
     res = (b'\x00') * 32
-    found = ice.bsgs_2nd_check(pubkey_bytes, hex_value, bP_elem, res)
+    found = ice.bsgs_2nd_check(pubkey_bytes, hex_value, res)
     return found, res
 #==============================================================================
 def prepare_bin_file_work(in_file, out_file, lower = False):
@@ -1060,3 +1186,63 @@ def check_collision(h160):
     
     found = ice.check_collision(h160)
     return found
+#==============================================================================
+def check_collision_mcpu(h160_array, num_items = 1, mcpu = os.cpu_count()):
+    ''' h160_array is either a list of 20 byte hash to check for collision or 
+    a contiguous array of 20 * num_items bytes '''
+    if type(h160_array) == list: 
+        num_items = len(h160_array)
+        h160_array = b''.join(h160_array)
+        
+    found_array = (b'\x00') * num_items
+    ice.check_collision_mcpu(h160_array, num_items, mcpu, found_array)
+    return found_array
+#==============================================================================
+def xor_para(_items, _fp=0.000001):
+    ''' To be used for XOR Filters filling and checking purpose'''
+    _bits = int(-_items * math.log(_fp) / (math.log(2) ** 2))  # numer of bits
+    _hashes = int((_bits / _items) * math.log(2))  # number of hash
+    #_xf = (b'\x00') * ((_bits + 7) // 8)  # initialize the bit array
+    return _bits, _hashes#, _xf
+#==============================================================================
+def fill_in_xor(inp_list, _fp = 0.000001):
+    _bits, _hashes = xor_para(len(inp_list), _fp)
+    _xf = (b'\x00') * ((_bits + 7) // 8)  # initialize the bit array
+    for line in inp_list:
+        if type(line) != bytes: tt = str(line).encode("utf-8")
+        else: tt = line
+        res = ice.xor_filter_add(tt, len(tt), _bits, _hashes, _xf)
+    del res
+    return _bits, _hashes, _xf, _fp, len(inp_list)
+#==============================================================================
+def dump_xor_file(output_xor_file_name, _bits, _hashes, _xf, _fp, _elem):
+    with open(output_xor_file_name, 'wb') as f:
+        pickle.dump((_bits, _hashes, _xf, _fp, _elem), f)
+
+def read_xor_file(xor_file_name):
+    '''It will return the 5 output as _bits, _hashes, _xf, _fp, _elem'''
+    with open(xor_file_name, 'rb') as f:
+        return pickle.load(f)
+#==============================================================================
+def check_in_xor(this_line, _bits, _hashes, _xf):
+    if type(this_line) != bytes: tt = str(this_line).encode("utf-8")
+    else: tt = this_line
+    if ice.xor_filter_check(tt, len(tt), _bits, _hashes, _xf) > 0: return True
+    else: return False
+#==============================================================================
+def check_in_xor_mcpu(bigbuff, num_items, sz, mcpu, _bits, _hashes, _xf):
+    # sz = 32 if bigbuff is concatenated bytes of Xpoint with num_items elements
+    found_array = (b'\x00') * num_items
+    ice.xor_filter_check_mcpu(bigbuff, num_items, sz, mcpu, _bits, _hashes, _xf, found_array)
+    return found_array
+#==============================================================================
+def bsgs_xor_create_mcpu(mcpu, total_entries, _fp = 0.0000001):
+    if total_entries%(mcpu*1000) != 0:
+        total_entries = mcpu*1000*(total_entries//(mcpu*1000))
+        if total_entries == 0: total_entries = mcpu * 1000
+        print('[*] Number of elements should be a multiple of 1000*mcpu. Automatically corrected it to nearest value:',total_entries)
+    _bits, _hashes = xor_para(total_entries, _fp)
+    _xf = (b'\x00') * ((_bits + 7) // 8)
+    print(f'[+] XOR [bits: {_bits}] [hashes: {_hashes}] [size: {_bits//8} Bytes] [false prob: {_fp}]')
+    ice.bsgs_xor_create_mcpu(mcpu, total_entries, _bits, _hashes, _xf)
+    return _bits, _hashes, _xf, _fp, total_entries

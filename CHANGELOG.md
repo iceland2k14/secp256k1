@@ -1,3 +1,18 @@
+## Version: 0.1.12012025
+- Integer with >N is handled in fl as Mod_N
+- Fixed #61
+- Added dump_bsgs_2nd / load_bsgs_2nd to dump / load the bsgs_2nd_check_prepare data to binary file.
+- In bsgs_2nd_check removed extra argument bP_elem
+- Added check_collision_mcpu as an extension of check_collision to use mcpu
+- Added rmd160 for RIPEmd160 and hash160 as RIPEmd160(SHA256)
+- Added create_burn_address for p2pkh compressed btc address to have some fun
+- Added point_division as a wrapper of inverse using point_multiplication
+- Added Operator Overloading class UpubData for (+/-*) simplification. Beware of runtime overhead
+- Added XOR Filter functions xor_para, fill_in_xor, dump_xor_file, read_xor_file, check_in_xor
+- Added bsgs_xor_create_mcpu for creating XOR filters using bsgs algo with multi cpu
+- Added check_in_xor_mcpu for multicpu search
+
+
 ## Version: 0.1.27032024
 - Bugfix bloom_check_add_mcpu
 - Added one_to_6pubkey and one_to_6privatekey using symmetry and endomorphism property
