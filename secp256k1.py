@@ -1117,7 +1117,7 @@ def check_in_bloom(this_line, _bits, _hashes, _bf):
     if ice.bloom_check_add(tt, len(tt), 0, _bits, _hashes, _bf) > 0: return True
     else: return False
 #==============================================================================
-def create_bsgs_bloom_mcpu(mcpu, total_entries, _fp = 0.0000001):
+def create_bsgs_bloom_mcpu(mcpu, total_entries, _fp = 0.000001):
     if total_entries%(mcpu*1000) != 0:
         total_entries = mcpu*1000*(total_entries//(mcpu*1000))
         if total_entries == 0: total_entries = mcpu * 1000
@@ -1236,13 +1236,13 @@ def check_in_xor_mcpu(bigbuff, num_items, sz, mcpu, _bits, _hashes, _xf):
     ice.xor_filter_check_mcpu(bigbuff, num_items, sz, mcpu, _bits, _hashes, _xf, found_array)
     return found_array
 #==============================================================================
-def bsgs_xor_create_mcpu(mcpu, total_entries, _fp = 0.0000001):
+def bsgs_xor_create_mcpu(mcpu, total_entries, _fp = 0.000001):
     if total_entries%(mcpu*1000) != 0:
         total_entries = mcpu*1000*(total_entries//(mcpu*1000))
         if total_entries == 0: total_entries = mcpu * 1000
         print('[*] Number of elements should be a multiple of 1000*mcpu. Automatically corrected it to nearest value:',total_entries)
     _bits, _hashes = xor_para(total_entries, _fp)
     _xf = (b'\x00') * ((_bits + 7) // 8)
-    print(f'[+] XOR [bits: {_bits}] [hashes: {_hashes}] [size: {_bits//8} Bytes] [false prob: {_fp}]')
+    print(f'[+] XOR [bits: {_bits}] [hashes: {_hashes}] [size: {len(_xf)} Bytes] [false prob: {_fp}]')
     ice.bsgs_xor_create_mcpu(mcpu, total_entries, _bits, _hashes, _xf)
     return _bits, _hashes, _xf, _fp, total_entries
