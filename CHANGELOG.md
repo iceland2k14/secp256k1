@@ -1,3 +1,10 @@
+## Version: 0.1.29012025
+- Changed hash function inside XOR Filter to xxhash
+- Revert back to -O2 compilation flag for varsatile usability .Fixed #63
+- Bugfix in bsgs_xor_create_mcpu for Element G
+- Minor speedup in create_valid_mnemonics
+
+
 ## Version: 0.1.12012025
 - Integer with >N is handled in fl as Mod_N
 - Fixed #61
