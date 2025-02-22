@@ -1,3 +1,10 @@
+## Version: 0.1.16022025
+- Bugfix in load_bsgs_2nd. Reduced the overall size requirement of bsgs_2nd
+- Added bsgs_2nd_check_mcpu for checking all pubkeys together using multicpu
+- Generalized verify_message for other r/-r, s/-s cases
+- Shifted UpubData class to benchmark script
+
+
 ## Version: 0.1.29012025
 - Changed hash function inside XOR Filter to xxhash
 - Revert back to -O2 compilation flag for varsatile usability .Fixed #63

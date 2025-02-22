@@ -235,8 +235,10 @@ ice.dump_bsgs_state.argtypes = [ctypes.c_char_p, ctypes.c_bool] # binary_dump_fi
 #==============================================================================
 ice.load_bsgs_state.argtypes = [ctypes.c_char_p, ctypes.c_bool] # binary_dump_file_in, verbose
 #==============================================================================
-ice.bsgs_2nd_check.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p] # upub, z1, bP_elem, ret
+ice.bsgs_2nd_check.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p] # upub, z1, ret
 ice.bsgs_2nd_check.restype = ctypes.c_bool #True or False
+#==============================================================================
+ice.bsgs_2nd_check_mcpu.argtypes = [ctypes.c_void_p, ctypes.c_ulonglong, ctypes.c_int, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p] # buff, num_items, mcpu, z1, ret, found_array
 #==============================================================================
 ice.Load_data_to_memory.argtypes = [ctypes.c_char_p, ctypes.c_bool] #sorted_bin_file_h160, verbose
 #==============================================================================
@@ -257,56 +259,6 @@ ice.bsgs_xor_create_mcpu.argtypes = [ctypes.c_int, ctypes.c_ulonglong, ctypes.c_
 ice.init_secp256_lib()
 #==============================================================================
 ###############################################################################
-
-# For Operator Overloading Purpose. Like P + Q, Q * 20, P / 5 etc etc.
-class UpubData:
-    def __init__(self, data):
-        if len(data) != 65:
-            raise ValueError("Data must be 65 bytes")
-        self.data = data
-    
-    def __add__(self, other):
-        if not isinstance(other, UpubData):
-            return NotImplemented
-        return UpubData(point_addition(self.data, other.data))
-    
-    def __sub__(self, other):
-        if not isinstance(other, UpubData):
-            return NotImplemented
-        return UpubData(point_subtraction(self.data, other.data))
-
-    def __neg__(self):
-        return UpubData(point_negation(self.data))
-    
-    def __mul__(self, other):
-        if isinstance(other, int):
-            return UpubData(point_multiplication(self.data, other))
-        return NotImplemented
-
-    def __rmul__(self, other):
-        return self.__mul__(other)
-
-    def __truediv__(self, other):
-        if isinstance(other, int):
-            return UpubData(point_division(self.data, other))
-        return NotImplemented
-    
-    def to_bytes(self): 
-        return self.data
-    
-    def __repr__(self):
-        return f"UpubData({self.data})"
-    
-    def __str__(self): 
-        return f"{self.data.hex()}"
-
-def upub(data): 
-    if isinstance(data, UpubData): 
-        return data 
-    return UpubData(data)
-
-# Example. Q = (((P * 160 )-P) /77).to_bytes()
-
 
 ###############################################################################
 #==============================================================================
@@ -335,22 +287,6 @@ def scalar_multiplications(pvk_int_list):
     pvk_int_list = [bytes.fromhex(fl(N+i)) if i < 0 else bytes.fromhex(fl(i)) for i in pvk_int_list]
     res = _scalar_multiplications(pvk_int_list)
     return bytes(bytearray(res))
-#==============================================================================
-# =============================================================================
-# def point_multiplication(k, P):
-#     ''' k=scalar. P = Input Point. Output is 65 bytes uncompressed pubkey '''
-#     if type(P) == int: k,P = P,k
-#     def bits(k):
-#         while k:
-#             yield k & 1
-#             k >>= 1
-#     result = Zero
-#     addend = P
-#     for bit in bits(k):
-#         if bit == 1: result=point_addition(result,addend)
-#         addend=point_doubling(addend)
-#     return result
-# =============================================================================
 #==============================================================================
 def _point_multiplication(pubkey_bytes, kk):
     ''' Input Point and Integer value passed to function. 65 bytes uncompressed pubkey output '''
@@ -648,9 +584,9 @@ def verify_message(address, signature, message):
     else:
         r, s, z, is_compress, RP, pubkey = out
         print(f'Rpoint: {RP.hex()}')
-        print(f'r : {hex(r)[2:]}')
-        print(f's : {hex(s)[2:]}')
-        print(f'z : {hex(z)[2:]}')
+        print(f'r : {r:064x}')
+        print(f's : {s:064x}')
+        print(f'z : {z:064x}')
         print(f'PubKey : {pubkey}')
         print(f'Address : {address}')
         print('\nsignature is Valid and Address is Verified.\n')
@@ -661,43 +597,40 @@ def verify_message(address, signature, message):
         print(signature)
         print('-----END BITCOIN SIGNATURE-----')
 #==============================================================================
+
 def _verify_message(address, signature, message):
-    """ See http://www.secg.org/download/aid-780/sec1-v2.pdf for the math """
+    """ Follow BIP-0137 for the specifications """
     sig = base64.b64decode(signature)
-    _, r, s = sig[0], int.from_bytes(sig[1:33], 'big'), int.from_bytes(sig[33:], 'big')
+    rcid, r, s = sig[0], int.from_bytes(sig[1:33], 'big'), int.from_bytes(sig[33:], 'big')
     msb = msg_magic(message)
     z = int.from_bytes(get_sha256(get_sha256(msb)), 'big')
-    RP1 = pub2upub('02' + hex(r)[2:].zfill(64))
-    RP2 = pub2upub('03' + hex(r)[2:].zfill(64))
-    sdr = (s * inv(r)) % N
+    #print(f'r : {hex(r)[2:]}')
+    #print(f's : {hex(s)[2:]}')
+    #print(f'z : {hex(z)[2:]}')
+        
+    RPF = lambda prefix, r: pub2upub(prefix + hex(r)[2:].zfill(64))
     zdr = (z * inv(r)) % N
-    FF1 = point_subtraction( point_multiplication(RP1, sdr),
-                                scalar_multiplication(zdr) )
-    FF2 = point_subtraction( point_multiplication(RP2, sdr),
-                                scalar_multiplication(zdr) )
-    if address[0] == '1': #p2pkh compressed or uncompressed
-        if address == pubkey_to_address(0, True, FF1):
-            return r, s, z, True, RP1, point_to_cpub(FF1)
-        if address == pubkey_to_address(0, False, FF1):
-            return r, s, z, False, RP1, FF1.hex()[2:]
-    if address[0] == '3': #p2sh compressed
-        if address == pubkey_to_address(1, True, FF1):
-            return r, s, z, True, RP1, point_to_cpub(FF1)
-    if address[0] == 'b': #bech32 compressed
-        if address == pubkey_to_address(2, True, FF1):
-            return r, s, z, True, RP1, point_to_cpub(FF1)
-    if address[0] == '1': #p2pkh compressed or uncompressed
-        if address == pubkey_to_address(0, True, FF2):
-            return r, s, z, True, RP2, point_to_cpub(FF2)
-        if address == pubkey_to_address(0, False, FF2):
-            return r, s, z, False, RP2, FF2.hex()[2:]
-    if address[0] == '3': #p2sh compressed
-        if address == pubkey_to_address(1, True, FF2):
-            return r, s, z, True, RP2, point_to_cpub(FF2)
-    if address[0] == 'b': #bech32 compressed
-        if address == pubkey_to_address(2, True, FF2):
-            return r, s, z, True, RP2, point_to_cpub(FF2)
-    return False
+    sL = [(i * inv(r)) % N for i in [s, -s%N] ]
+    RL = [RPF('02', r), RPF('03', r), RPF('02', -r%N), RPF('03', -r%N)]
+    aD = {'1':0, '3':1, 'b':2}
+    is_compressed = False if rcid >= 27 and rcid <= 30 else True
+
+    #print(f'is_compressed={is_compressed}')
+    
+    for sdr in sL:
+        #print(f'sdr={hex(sdr)}')
+        for RP in RL:
+            #print(f'RP={RP.hex()}')
+            FF = point_subtraction( point_multiplication(RP, sdr),
+                                        scalar_multiplication(zdr) )
+            #print(f'FF={point_to_cpub(FF)}')
+            if address == pubkey_to_address(aD[address[0]], is_compressed, FF):
+                #print(f'Matched {address}')
+                if is_compressed:
+                    return r, s, z, is_compressed, RP, point_to_cpub(FF)
+                else:
+                    return r, s, z, is_compressed, RP, FF.hex()
+        return False
 #==============================================================================
 def fl(sstr, length=64):
     ''' Fill input to exact 32 bytes. If input is int or str the return is str. if input is bytes return is bytes'''
@@ -1148,6 +1081,22 @@ def bsgs_2nd_check(pubkey_bytes, z1_int):
     res = (b'\x00') * 32
     found = ice.bsgs_2nd_check(pubkey_bytes, hex_value, res)
     return found, res
+#==============================================================================
+def bsgs_2nd_check_mcpu(concat_pubkey_bytes, z1_int, mcpu = os.cpu_count()):
+    '''upub 65 bytes of each pubkey, concatenated in concat_pubkey_bytes as input.
+    Output pvk will be 32 bytes in res corresponding to each pubkey, if matched.
+    for easy check found_array will contain either 0 or 1 for each element.
+    '''
+    if type(concat_pubkey_bytes) != bytes:
+        print("[Error] Input format [Bytes] allowed only. Detected : ", type(concat_pubkey_bytes))
+    num_items = len(concat_pubkey_bytes)//65
+    
+    if z1_int < 0: z1_int = N+z1_int
+    hex_value = fl(z1_int).encode('utf8')
+    res = (b'\x00') * (32 * num_items)
+    found_array = (b'\x00') * num_items
+    ice.bsgs_2nd_check_mcpu(concat_pubkey_bytes, num_items, mcpu, hex_value, res, found_array)
+    return found_array, res
 #==============================================================================
 def prepare_bin_file_work(in_file, out_file, lower = False):
     use0x = False

@@ -245,12 +245,16 @@ print(found, pvk.hex())
 :  True 0000000000000000000000000000000010000000000000000000000005820545
 
 ice.dump_bsgs_2nd('file_2nd_dump.bin', True)
-: [+] [N2:5000000, N3:250000, N4:12500]  Vec4th Size    : 25000
-: [+] [bloom2nd (34 MB)] [bloom3rd (1 MB)] [bloom4th (0 MB)]
+: [+] [N2:5000000, N3:250000, N4:12500]  Vec4th Size    : 12500
+: [+] [bloom2nd (17 MB)] [bloom3rd (0 MB)] [bloom4th (0 MB)]
 
 ice.load_bsgs_2nd('file_2nd_dump.bin', True)
-: [+] [N2:5000000, N3:250000, N4:12500]  Vec4th Size    : 25000
-: [+] [bloom2nd (34 MB)] [bloom3rd (1 MB)] [bloom4th (0 MB)]
+: [+] [N2:5000000, N3:250000, N4:12500]  Vec4th Size    : 12500
+: [+] [bloom2nd (17 MB)] [bloom3rd (0 MB)] [bloom4th (0 MB)]
+
+founds, pvks = ice.bsgs_2nd_check_mcpu(bigbuf_upubs, kk)
+int.from_bytes(found, 'big') > 0:
+: False
 
 
 P = ice.pub2upub('02CEB6CBBCDBDF5EF7150682150F4CE2C6F4807B349827DCDBDD1F2EFA885A2630')
@@ -290,6 +294,24 @@ dd = ice.bsgs_xor_create_mcpu(4, 10000000)
 
 
 ```
+# Benchmark
+```
+(base) C:\Anaconda3> python benchmark.py
+
+P2PKH_C                        : PASS
+P2PKH_U                        : PASS
+P2SH                           : PASS
+Bech32                         : PASS
+Scalar_Multiplication          : PASS
+Point Negation                 : PASS
+Point Doubling                 : PASS
+Point Multiplication           : PASS
+[8/8] All check Passed...
+Operator Check                 : PASS
+Point Sequential Increment     : 1 loops, best of 5: 834.80 ms per loop
+Point Addition                 : 100000 loops, best of 5: 2.09 us per loop
+```
+
 # Speed
 On my old Laptop with i7 4810 MQ CPU
 ```
